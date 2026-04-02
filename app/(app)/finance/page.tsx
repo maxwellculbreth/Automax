@@ -69,7 +69,7 @@ const financeKPIs = [
   { key: "booked", label: "Booked Revenue", value: 7800, trend: "This period", trendUp: null, prefix: "$", icon: CalendarCheck },
   { key: "collected", label: "Collected Revenue", value: 15200, trend: "+18%", trendUp: true, prefix: "$", icon: Banknote },
   { key: "avgJob", label: "Avg Job Size", value: 412, trend: "+$24", trendUp: true, prefix: "$", icon: Receipt },
-  { key: "outstanding", label: "Outstanding", value: 3250, trend: "4 invoices", trendUp: false, prefix: "$", icon: AlertCircle },
+  { key: "expenses", label: "Total Expenses", value: 0, trend: "This period", trendUp: false, prefix: "$", icon: CreditCard },
 ]
 
 // Monthly revenue/expense data for chart
@@ -132,6 +132,22 @@ const aiInsights = [
   { priority: "medium", message: "Average job value is trending upward (+$24 vs last month).", icon: ArrowUpRight },
 ]
 
+// Format a transaction ISO date string as "Apr 2" (same year) or "Apr 2, 2026" (cross-year)
+function formatFinanceDate(iso: string): string {
+  const d = new Date(iso)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  })
+}
+
+// Title-case a string for display (does not affect underlying data keys)
+function toTitleCase(s: string): string {
+  return s.replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // Quick actions
 const quickActions = [
   { label: "Add Expense", icon: CreditCard },
@@ -158,7 +174,7 @@ export default function FinancePage() {
     { key: "scheduled", label: "Scheduled", value: financeData.scheduledRevenue, trend: `${financeData.leadsByStatus.scheduled || 0} scheduled`, trendUp: null, prefix: "$", icon: CalendarCheck },
     { key: "collected", label: "Collected", value: financeData.collectedRevenue, trend: `${financeData.leadsByStatus.completed || 0} completed`, trendUp: true, prefix: "$", icon: Banknote },
     { key: "avgJob", label: "Avg Job Size", value: financeData.avgJobSize, trend: "Per job", trendUp: true, prefix: "$", icon: Receipt },
-    { key: "outstanding", label: "Outstanding", value: financeData.outstandingAmount, trend: `${financeData.outstandingCount} jobs`, trendUp: false, prefix: "$", icon: AlertCircle },
+    { key: "expenses", label: "Total Expenses", value: financeData.totalExpenses, trend: "This period", trendUp: false, prefix: "$", icon: CreditCard },
     { key: "newLeads", label: "New Leads", value: financeData.leadsByStatus.new || 0, trend: "In pipeline", trendUp: null, prefix: "", icon: TrendingUp },
     { key: "quoted", label: "Quoted", value: financeData.leadsByStatus.quoted || 0, trend: "Awaiting decision", trendUp: null, prefix: "", icon: FileText },
     { key: "lost", label: "Lost", value: financeData.leadsByStatus.lost || 0, trend: "This period", trendUp: false, prefix: "", icon: XCircle },
@@ -333,12 +349,12 @@ export default function FinancePage() {
                       </div>
                       <div className="flex gap-1 h-8">
                         <div
-                          className="bg-primary/80 rounded-l-md flex items-center justify-center min-w-[2px]"
+                          className="bg-emerald-500/80 rounded-l-md flex items-center justify-center min-w-[2px]"
                           style={{ width: `${Math.max((bar.revenue / maxVal) * 85, bar.revenue > 0 ? 4 : 0)}%` }}
                         >
                           {bar.revenue > 0 && (
-                            <span className="text-[10px] font-medium text-primary-foreground px-1 truncate">
-                              {bar.revenue >= 1000 ? `$${(bar.revenue / 1000).toFixed(1)}k` : `$${bar.revenue}`}
+                            <span className="text-[10px] font-medium text-white px-1 truncate">
+                              {bar.revenue >= 1000 ? `$${(bar.revenue / 1000).toFixed(1)}k` : `$${Math.round(bar.revenue)}`}
                             </span>
                           )}
                         </div>
@@ -348,7 +364,7 @@ export default function FinancePage() {
                             style={{ width: `${(bar.expenses / maxVal) * 85}%` }}
                           >
                             <span className="text-[10px] font-medium text-white px-1">
-                              {bar.expenses >= 1000 ? `$${(bar.expenses / 1000).toFixed(1)}k` : `$${bar.expenses}`}
+                              {bar.expenses >= 1000 ? `$${(bar.expenses / 1000).toFixed(1)}k` : `$${Math.round(bar.expenses)}`}
                             </span>
                           </div>
                         )}
@@ -359,7 +375,7 @@ export default function FinancePage() {
               </div>
               <div className="flex items-center gap-4 mt-5 pt-4 border-t border-border">
                 <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-sm bg-primary/80" />
+                  <div className="h-3 w-3 rounded-sm bg-emerald-500/80" />
                   <span className="text-[12px] text-muted-foreground">Revenue</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -390,14 +406,29 @@ export default function FinancePage() {
                 </span>
               </div>
               <div className="flex items-center justify-between py-3 border-b border-border">
-                <span className="text-[13px] font-medium text-foreground">Gross Profit</span>
-                <span className="text-[16px] font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(financeData?.grossProfit ?? 0)}</span>
+                <span className="text-[13px] font-medium text-foreground">Profit / Loss</span>
+                <span className={cn(
+                  "text-[16px] font-bold",
+                  (financeData?.grossProfit ?? 0) >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                )}>
+                  {(financeData?.grossProfit ?? 0) < 0 ? `-${formatCurrency(Math.abs(financeData?.grossProfit ?? 0))}` : formatCurrency(financeData?.grossProfit ?? 0)}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3">
                 <span className="text-[13px] text-muted-foreground">Profit Margin</span>
                 <div className="flex items-center gap-2">
                   <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 dark:bg-emerald-400 rounded-full" style={{ width: `${financeData?.profitMargin ?? 0}%` }} />
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        (financeData?.profitMargin ?? 0) >= 0
+                          ? "bg-emerald-500 dark:bg-emerald-400"
+                          : "bg-red-500 dark:bg-red-400"
+                      )}
+                      style={{ width: `${Math.max(0, Math.abs(financeData?.profitMargin ?? 0))}%` }}
+                    />
                   </div>
                   <span className="text-[14px] font-semibold text-foreground">{financeData?.profitMargin ?? 0}%</span>
                 </div>
@@ -454,7 +485,7 @@ export default function FinancePage() {
               <tbody className="divide-y divide-border">
                 {filteredTransactions.map((t) => (
                   <tr key={t.id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground whitespace-nowrap">{t.date}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground whitespace-nowrap">{formatFinanceDate(t.date)}</td>
                     <td className="px-5 py-3.5">
                       <span className={cn(
                         "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
@@ -538,7 +569,7 @@ export default function FinancePage() {
                   return (
                     <div key={cat.category} className="space-y-1.5">
                       <div className="flex items-center justify-between text-[13px]">
-                        <span className="font-medium text-foreground">{cat.label}</span>
+                        <span className="font-medium text-foreground">{toTitleCase(cat.label)}</span>
                         <span className="text-muted-foreground tabular-nums">
                           {formatCurrency(cat.amount)}
                           <span className="ml-1.5 text-[11px]">({pct}%)</span>
