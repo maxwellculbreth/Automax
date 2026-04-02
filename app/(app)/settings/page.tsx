@@ -226,6 +226,51 @@ export default function SettingsPage() {
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-[13px]">Phone</Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange("phone", e.target.value)}
+                          placeholder="(555) 555-5555"
+                          className="h-9 text-[13px]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-[13px]">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => handleInputChange("email", e.target.value)}
+                          placeholder="you@example.com"
+                          className="h-9 text-[13px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="address" className="text-[13px]">Address</Label>
+                        <Input
+                          id="address"
+                          value={formData.address}
+                          onChange={(e) => handleInputChange("address", e.target.value)}
+                          placeholder="123 Main St, City, State"
+                          className="h-9 text-[13px]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="website" className="text-[13px]">Website</Label>
+                        <Input
+                          id="website"
+                          value={formData.website}
+                          onChange={(e) => handleInputChange("website", e.target.value)}
+                          placeholder="https://example.com"
+                          className="h-9 text-[13px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
                         <Label htmlFor="industry" className="text-[13px]">Industry</Label>
                         <Select value={formData.industry} onValueChange={(v) => handleInputChange("industry", v)}>
                           <SelectTrigger className="h-9 text-[13px]">
@@ -266,17 +311,17 @@ export default function SettingsPage() {
                         {isSaving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                         {isSaving ? "Saving..." : "Save Changes"}
                       </Button>
-{saveStatus === "success" && (
-                                        <span className="text-[12px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                          <CheckCircle className="h-3.5 w-3.5" />
-                                          Saved successfully
-                                        </span>
-                                      )}
-                                      {saveStatus === "error" && (
-                                        <span className="text-[12px] text-red-500 dark:text-red-400">
-                                          Failed to save. Please try again.
-                                        </span>
-                                      )}
+                      {saveStatus === "success" && (
+                        <span className="text-[12px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Saved successfully
+                        </span>
+                      )}
+                      {saveStatus === "error" && (
+                        <span className="text-[12px] text-red-500 dark:text-red-400">
+                          Failed to save. Please try again.
+                        </span>
+                      )}
                     </div>
                   </>
                 )}
