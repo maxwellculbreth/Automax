@@ -67,6 +67,7 @@ const statusOptions = [
   { value: "contacted", label: "Contacted" },
   { value: "quoted", label: "Quoted" },
   { value: "scheduled", label: "Scheduled" },
+  { value: "completed", label: "Completed" },
   { value: "lost", label: "Lost" },
 ] as const
 
