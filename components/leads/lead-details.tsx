@@ -44,7 +44,7 @@ const statusOptions = [
   { value: "new", label: "New" },
   { value: "contacted", label: "Contacted" },
   { value: "quoted", label: "Quoted" },
-  { value: "booked", label: "Booked" },
+  { value: "scheduled", label: "Scheduled" },
   { value: "lost", label: "Lost" },
 ] as const
 
@@ -61,6 +61,11 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const [contactAddress, setContactAddress] = useState(lead.address || "")
   const [notes, setNotes] = useState(lead.notes || "")
   const [estimatedValue, setEstimatedValue] = useState(lead.estimated_value?.toString() || "")
+  const [jobDate, setJobDate] = useState(
+    lead.scheduled_at
+      ? new Date(lead.scheduled_at).toISOString().slice(0, 16)
+      : ""
+  )
   const [followUpDate, setFollowUpDate] = useState(
     lead.next_follow_up_at
       ? new Date(lead.next_follow_up_at).toISOString().slice(0, 16)
@@ -75,12 +80,17 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     setContactAddress(lead.address || "")
     setNotes(lead.notes || "")
     setEstimatedValue(lead.estimated_value?.toString() || "")
+    setJobDate(
+      lead.scheduled_at
+        ? new Date(lead.scheduled_at).toISOString().slice(0, 16)
+        : ""
+    )
     setFollowUpDate(
       lead.next_follow_up_at
         ? new Date(lead.next_follow_up_at).toISOString().slice(0, 16)
         : ""
     )
-  }, [lead.id, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.next_follow_up_at])
+  }, [lead.id, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at])
 
   const handleStatusChange = async (status: Lead["status"]) => {
     const result = await updateLead({ id: lead.id, updates: { status } })
@@ -129,6 +139,13 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
         mutateActivities()
       }
     }
+  }
+
+  const handleSaveJobDate = async () => {
+    await updateLead({
+      id: lead.id,
+      updates: { scheduled_at: jobDate ? new Date(jobDate).toISOString() : null },
+    })
   }
 
   const handleSaveFollowUp = async () => {
@@ -293,6 +310,19 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
                 className="h-9 pl-8 text-[13px]"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Job Date
+            </Label>
+            <Input
+              type="datetime-local"
+              value={jobDate}
+              onChange={(e) => setJobDate(e.target.value)}
+              onBlur={handleSaveJobDate}
+              className="h-9 text-[13px]"
+            />
           </div>
 
           <div className="space-y-2">

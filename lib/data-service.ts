@@ -843,6 +843,7 @@ interface SupabaseLead {
   quote_amount: number | null
   completed_at: string | null
   next_follow_up_at: string | null
+  scheduled_at: string | null
   created_at: string
   updated_at: string
 }
@@ -866,6 +867,7 @@ function mapSupabaseLeadToLead(supabaseLead: SupabaseLead): Lead {
     assigned_to: null, // Column doesn't exist in schema
     last_contact_at: null, // Column doesn't exist in schema
     next_follow_up_at: supabaseLead.next_follow_up_at ?? null,
+    scheduled_at: supabaseLead.scheduled_at ?? null,
     completed_at: supabaseLead.completed_at,
     created_at: supabaseLead.created_at,
     updated_at: supabaseLead.updated_at,
@@ -1231,6 +1233,7 @@ function mapLeadUpdateToSupabase(updates: LeadUpdate & { completed_at?: string }
   if (updates.estimated_value !== undefined) supabaseUpdates.quote_amount = updates.estimated_value
   if (updates.notes !== undefined) supabaseUpdates.message = updates.notes
   if (updates.next_follow_up_at !== undefined) supabaseUpdates.next_follow_up_at = updates.next_follow_up_at
+  if (updates.scheduled_at !== undefined) supabaseUpdates.scheduled_at = updates.scheduled_at
   if (updates.completed_at !== undefined) supabaseUpdates.completed_at = updates.completed_at
 
   supabaseUpdates.updated_at = new Date().toISOString()
