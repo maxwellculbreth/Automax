@@ -12,7 +12,6 @@ import {
   Settings,
   ChevronLeft,
   Menu,
-  Droplets,
   Megaphone,
   LogOut,
   DollarSign,
@@ -30,7 +29,7 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
-  { name: "Automaxtions", href: "/automations", icon: Zap },
+  { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
   { name: "Autome", href: "/autome", icon: Sparkles, max: true },
 ]
@@ -60,11 +59,16 @@ export function AppSidebar() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2 ml-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
-            <Droplets className="h-3.5 w-3.5 text-background" />
+        <div className="flex items-center gap-2.5 ml-3">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-blue-600 to-indigo-700">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </div>
-          <span className="text-[14px] font-semibold text-foreground">Automax</span>
+          <span className="text-[14px] tracking-tight select-none">
+            <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
+          </span>
         </div>
       </div>
 
@@ -92,19 +96,22 @@ export function AppSidebar() {
               collapsed ? "justify-center px-2" : "justify-between px-4"
             )}
           >
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               className={cn(
                 "flex items-center gap-2.5",
                 collapsed && "justify-center"
               )}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-                <Droplets className="h-4 w-4 text-background" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-blue-600 to-indigo-700">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </div>
               {!collapsed && (
-                <span className="text-[15px] font-semibold tracking-tight text-foreground">
-                  Automax
+                <span className="text-[15px] tracking-tight select-none">
+                  <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
                 </span>
               )}
             </Link>
