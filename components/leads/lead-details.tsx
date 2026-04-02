@@ -40,6 +40,14 @@ interface LeadDetailsProps {
   onClose: () => void
 }
 
+// Format a UTC ISO string as local time for a datetime-local input.
+// toISOString() always returns UTC, but datetime-local expects local time.
+function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => n.toString().padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const statusOptions = [
   { value: "new", label: "New" },
   { value: "contacted", label: "Contacted" },
@@ -55,6 +63,7 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const { mutate: mutateActivities } = useActivities()
   const { mutate: mutateUpcomingJobs } = useUpcomingJobs()
   const { mutate: mutateJobs } = useJobs()
+  const [currentStatus, setCurrentStatus] = useState(lead.status || "new")
   const [contactName, setContactName] = useState(lead.name || "")
   const [contactPhone, setContactPhone] = useState(lead.phone || "")
   const [contactEmail, setContactEmail] = useState(lead.email || "")
@@ -62,49 +71,38 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const [notes, setNotes] = useState(lead.notes || "")
   const [estimatedValue, setEstimatedValue] = useState(lead.estimated_value?.toString() || "")
   const [jobDate, setJobDate] = useState(
-    lead.scheduled_at
-      ? new Date(lead.scheduled_at).toISOString().slice(0, 16)
-      : ""
+    lead.scheduled_at ? toLocalDatetimeInput(lead.scheduled_at) : ""
   )
   const [followUpDate, setFollowUpDate] = useState(
-    lead.next_follow_up_at
-      ? new Date(lead.next_follow_up_at).toISOString().slice(0, 16)
-      : ""
+    lead.next_follow_up_at ? toLocalDatetimeInput(lead.next_follow_up_at) : ""
   )
 
   // Sync local state when lead prop changes (e.g., after Supabase update)
   useEffect(() => {
+    setCurrentStatus(lead.status || "new")
     setContactName(lead.name || "")
     setContactPhone(lead.phone || "")
     setContactEmail(lead.email || "")
     setContactAddress(lead.address || "")
     setNotes(lead.notes || "")
     setEstimatedValue(lead.estimated_value?.toString() || "")
-    setJobDate(
-      lead.scheduled_at
-        ? new Date(lead.scheduled_at).toISOString().slice(0, 16)
-        : ""
-    )
-    setFollowUpDate(
-      lead.next_follow_up_at
-        ? new Date(lead.next_follow_up_at).toISOString().slice(0, 16)
-        : ""
-    )
-  }, [lead.id, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at])
+    setJobDate(lead.scheduled_at ? toLocalDatetimeInput(lead.scheduled_at) : "")
+    setFollowUpDate(lead.next_follow_up_at ? toLocalDatetimeInput(lead.next_follow_up_at) : "")
+  }, [lead.id, lead.status, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at])
 
   const handleStatusChange = async (status: Lead["status"]) => {
+    setCurrentStatus(status) // optimistic — update UI immediately
     const result = await updateLead({ id: lead.id, updates: { status } })
     if (result) {
-      // Revalidate dashboard data after status change
       mutateKPIs()
       mutateUrgent()
       mutateActivities()
-      
-      // If booked, also revalidate jobs/schedule
-      if (status === "booked") {
+      if (status === "scheduled") {
         mutateUpcomingJobs()
         mutateJobs()
       }
+    } else {
+      setCurrentStatus(lead.status || "new") // revert on failure
     }
   }
 
@@ -282,7 +280,7 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
             <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Status
             </Label>
-            <Select value={lead.status || "new"} onValueChange={handleStatusChange} disabled={isUpdating}>
+            <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isUpdating}>
               <SelectTrigger className="h-9 text-[13px]">
                 <SelectValue />
               </SelectTrigger>
@@ -389,7 +387,7 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
             variant="outline" 
             size="sm" 
             className="h-8 text-[12px]"
-            onClick={() => handleStatusChange("booked")}
+            onClick={() => handleStatusChange("scheduled")}
             disabled={isUpdating}
           >
             Book Job
