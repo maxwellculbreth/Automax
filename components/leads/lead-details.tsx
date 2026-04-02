@@ -53,6 +53,10 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const { mutate: mutateActivities } = useActivities()
   const { mutate: mutateUpcomingJobs } = useUpcomingJobs()
   const { mutate: mutateJobs } = useJobs()
+  const [contactName, setContactName] = useState(lead.name || "")
+  const [contactPhone, setContactPhone] = useState(lead.phone || "")
+  const [contactEmail, setContactEmail] = useState(lead.email || "")
+  const [contactAddress, setContactAddress] = useState(lead.address || "")
   const [notes, setNotes] = useState(lead.notes || "")
   const [estimatedValue, setEstimatedValue] = useState(lead.estimated_value?.toString() || "")
   const [followUpDate, setFollowUpDate] = useState(
@@ -63,6 +67,10 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
 
   // Sync local state when lead prop changes (e.g., after Supabase update)
   useEffect(() => {
+    setContactName(lead.name || "")
+    setContactPhone(lead.phone || "")
+    setContactEmail(lead.email || "")
+    setContactAddress(lead.address || "")
     setNotes(lead.notes || "")
     setEstimatedValue(lead.estimated_value?.toString() || "")
     setFollowUpDate(
@@ -70,7 +78,7 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
         ? new Date(lead.next_follow_up_at).toISOString().slice(0, 16)
         : ""
     )
-  }, [lead.id, lead.notes, lead.estimated_value, lead.next_follow_up_at])
+  }, [lead.id, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.next_follow_up_at])
 
   const handleStatusChange = async (status: Lead["status"]) => {
     const result = await updateLead({ id: lead.id, updates: { status } })
@@ -86,6 +94,10 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
         mutateJobs()
       }
     }
+  }
+
+  const handleSaveContact = async (field: "name" | "phone" | "email" | "address", value: string) => {
+    await updateLead({ id: lead.id, updates: { [field]: value || null } })
   }
 
   const handleSaveNotes = async () => {
@@ -128,28 +140,47 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
             Contact
           </h4>
           <div className="space-y-2.5">
-            <a
-              href={`tel:${lead.phone}`}
-              className="flex items-center gap-2.5 text-[13px] text-foreground hover:text-primary transition-colors"
-            >
-              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              {lead.phone}
-            </a>
-            {lead.email && (
-              <a
-                href={`mailto:${lead.email}`}
-                className="flex items-center gap-2.5 text-[13px] text-foreground hover:text-primary transition-colors truncate"
-              >
-                <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="truncate">{lead.email}</span>
-              </a>
-            )}
-            {lead.address && (
-              <div className="flex items-start gap-2.5 text-[13px] text-foreground">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <span>{lead.address}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                onBlur={() => handleSaveContact("name", contactName)}
+                placeholder="Name"
+                className="h-8 text-[13px]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                onBlur={() => handleSaveContact("phone", contactPhone)}
+                placeholder="Phone"
+                className="h-8 text-[13px]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                onBlur={() => handleSaveContact("email", contactEmail)}
+                placeholder="Email"
+                type="email"
+                className="h-8 text-[13px]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={contactAddress}
+                onChange={(e) => setContactAddress(e.target.value)}
+                onBlur={() => handleSaveContact("address", contactAddress)}
+                placeholder="Address"
+                className="h-8 text-[13px]"
+              />
+            </div>
           </div>
         </div>
 

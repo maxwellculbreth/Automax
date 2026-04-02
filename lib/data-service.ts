@@ -828,7 +828,7 @@ export async function getCurrentUser(): Promise<User> {
 // ----- Leads -----
 
 // Type for Supabase leads table (matches actual schema)
-// Schema: id, company_id, customer_name, phone, email, service_type, address, message, source, status, quote_amount, completed_at, created_at, updated_at
+// Schema: id, company_id, customer_name, phone, email, service_type, address, message, source, status, quote_amount, completed_at, next_follow_up_at, created_at, updated_at
 interface SupabaseLead {
   id: string
   company_id: string
@@ -842,6 +842,7 @@ interface SupabaseLead {
   status: LeadStatusDB
   quote_amount: number | null
   completed_at: string | null
+  next_follow_up_at: string | null
   created_at: string
   updated_at: string
 }
@@ -864,7 +865,8 @@ function mapSupabaseLeadToLead(supabaseLead: SupabaseLead): Lead {
     notes: supabaseLead.message,
     assigned_to: null, // Column doesn't exist in schema
     last_contact_at: null, // Column doesn't exist in schema
-    next_follow_up_at: null, // Column doesn't exist in schema
+    next_follow_up_at: supabaseLead.next_follow_up_at ?? null,
+    completed_at: supabaseLead.completed_at,
     created_at: supabaseLead.created_at,
     updated_at: supabaseLead.updated_at,
   }
@@ -1219,17 +1221,20 @@ export async function createLead(lead: LeadInsert): Promise<Lead | null> {
 // IMPORTANT: Always use canonical status values ("scheduled", "completed") - never "booked" or "complete"
 function mapLeadUpdateToSupabase(updates: LeadUpdate & { completed_at?: string }): Record<string, unknown> {
   const supabaseUpdates: Record<string, unknown> = {}
-  
-  // Normalize status to canonical value before saving
-  if (updates.status !== undefined) {
-    supabaseUpdates.status = normalizeStatus(updates.status)
-  }
+
+  if (updates.name !== undefined) supabaseUpdates.customer_name = updates.name
+  if (updates.phone !== undefined) supabaseUpdates.phone = updates.phone
+  if (updates.email !== undefined) supabaseUpdates.email = updates.email
+  if (updates.address !== undefined) supabaseUpdates.address = updates.address
+  if (updates.service !== undefined) supabaseUpdates.service_type = updates.service
+  if (updates.status !== undefined) supabaseUpdates.status = normalizeStatus(updates.status)
   if (updates.estimated_value !== undefined) supabaseUpdates.quote_amount = updates.estimated_value
   if (updates.notes !== undefined) supabaseUpdates.message = updates.notes
+  if (updates.next_follow_up_at !== undefined) supabaseUpdates.next_follow_up_at = updates.next_follow_up_at
   if (updates.completed_at !== undefined) supabaseUpdates.completed_at = updates.completed_at
-  
+
   supabaseUpdates.updated_at = new Date().toISOString()
-  
+
   return supabaseUpdates
 }
 
