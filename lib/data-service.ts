@@ -2339,7 +2339,7 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   const categoryMap = new Map<string, { label: string; amount: number; count: number }>()
   rangeExpenses.forEach(e => {
     const key = e.expense_categories?.key || "uncategorized"
-    const label = e.expense_categories?.label || "Uncategorized"
+    const label = e.expense_categories?.label || e.expense_categories?.key || "Uncategorized"
     const existing = categoryMap.get(key) || { label, amount: 0, count: 0 }
     categoryMap.set(key, {
       label,

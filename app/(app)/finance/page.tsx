@@ -145,7 +145,7 @@ function formatFinanceDate(iso: string): string {
 
 // Title-case a string for display (does not affect underlying data keys)
 function toTitleCase(s: string): string {
-  return s.replace(/\b\w/g, c => c.toUpperCase())
+  return s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
 }
 
 // Quick actions
