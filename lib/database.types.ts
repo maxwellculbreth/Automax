@@ -365,6 +365,83 @@ export interface Database {
           was_used?: boolean
         }
       }
+      expense_categories: {
+        Row: {
+          id: string
+          key: string
+          label: string | null
+          sort_order: number | null
+          is_active: boolean | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          label?: string | null
+          sort_order?: number | null
+          is_active?: boolean | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          label?: string | null
+          sort_order?: number | null
+          is_active?: boolean | null
+        }
+      }
+      expenses: {
+        Row: {
+          id: string
+          company_id: string
+          created_by: string
+          expense_category_id: string | null
+          amount: number | null
+          expense_date: string | null
+          vendor: string | null
+          description: string | null
+          status: string | null
+          payment_method: string | null
+          notes: string | null
+          receipt_url: string | null
+          linked_lead_id: string | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          created_by?: string
+          expense_category_id?: string | null
+          amount?: number | null
+          expense_date?: string | null
+          vendor?: string | null
+          description?: string | null
+          status?: string | null
+          payment_method?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+          linked_lead_id?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          created_by?: string
+          expense_category_id?: string | null
+          amount?: number | null
+          expense_date?: string | null
+          vendor?: string | null
+          description?: string | null
+          status?: string | null
+          payment_method?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+          linked_lead_id?: string | null
+          updated_at?: string | null
+        }
+      }
       integrations: {
         Row: {
           id: string
@@ -463,6 +540,8 @@ export type Activity = Database["public"]["Tables"]["activities"]["Row"]
 export type Job = Database["public"]["Tables"]["jobs"]["Row"]
 export type AIGeneration = Database["public"]["Tables"]["ai_generations"]["Row"]
 export type Integration = Database["public"]["Tables"]["integrations"]["Row"]
+export type ExpenseCategory = Database["public"]["Tables"]["expense_categories"]["Row"]
+export type Expense = Database["public"]["Tables"]["expenses"]["Row"]
 
 // Insert types
 export type BusinessInsert = Database["public"]["Tables"]["businesses"]["Insert"]
@@ -474,6 +553,8 @@ export type ActivityInsert = Database["public"]["Tables"]["activities"]["Insert"
 export type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"]
 export type AIGenerationInsert = Database["public"]["Tables"]["ai_generations"]["Insert"]
 export type IntegrationInsert = Database["public"]["Tables"]["integrations"]["Insert"]
+export type ExpenseCategoryInsert = Database["public"]["Tables"]["expense_categories"]["Insert"]
+export type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"]
 
 // Update types
 export type BusinessUpdate = Database["public"]["Tables"]["businesses"]["Update"]
@@ -485,3 +566,5 @@ export type ActivityUpdate = Database["public"]["Tables"]["activities"]["Update"
 export type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"]
 export type AIGenerationUpdate = Database["public"]["Tables"]["ai_generations"]["Update"]
 export type IntegrationUpdate = Database["public"]["Tables"]["integrations"]["Update"]
+export type ExpenseCategoryUpdate = Database["public"]["Tables"]["expense_categories"]["Update"]
+export type ExpenseUpdate = Database["public"]["Tables"]["expenses"]["Update"]

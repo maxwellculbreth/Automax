@@ -3,7 +3,7 @@
 
 "use client"
 
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import useSWRMutation from "swr/mutation"
 import {
   getLeads,
@@ -28,6 +28,8 @@ import {
   getAIGenerations,
   getCurrentCompany,
   getFinanceData,
+  getExpenseCategories,
+  createExpense,
   type Lead,
   type Message,
   type Automation,
@@ -41,8 +43,9 @@ import {
   type Company,
   type FinanceData,
   type DateRangeKey,
+  type ExpenseCategory,
 } from "@/lib/data-service"
-import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate } from "@/lib/database.types"
+import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert } from "@/lib/database.types"
 
 // ============================================================================
 // LEADS
@@ -420,5 +423,39 @@ export function useFinanceData(range = "this-month") {
     isLoading,
     isError: !!error,
     mutate,
+  }
+}
+
+export function useExpenseCategories() {
+  const { data, error, isLoading } = useSWR<ExpenseCategory[]>(
+    "expense-categories",
+    getExpenseCategories,
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    categories: data ?? [],
+    isLoading,
+    isError: !!error,
+  }
+}
+
+export function useCreateExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "create-expense",
+    async (_key: string, { arg }: { arg: ExpenseInsert }) => {
+      const result = await createExpense(arg)
+      if (result) {
+        // Invalidate all finance-data range keys
+        const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
+        await Promise.all(ranges.map(r => globalMutate(`finance-data-${r}`)))
+      }
+      return result
+    }
+  )
+
+  return {
+    createExpense: trigger,
+    isCreating: isMutating,
   }
 }

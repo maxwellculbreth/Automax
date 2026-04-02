@@ -17,11 +17,15 @@ import type {
   MessageInsert,
   AutomationUpdate,
   LeadStatusDB,
+  ExpenseCategory,
+  Expense,
+  ExpenseInsert,
 } from "./database.types"
 
 // Re-export types for component usage
 export type { Lead, Message, Automation, Activity, User, Business, Job, AIGeneration }
 export type { LeadStatusDB as LeadStatus }
+export type { ExpenseCategory, Expense, ExpenseInsert }
 
 // ============================================================================
 // MOCK DATA - Replace with Supabase queries when ready
@@ -2103,13 +2107,13 @@ export function formatRelativeTime(date: string | Date): string {
 
 export interface FinanceTransaction {
   id: string
-  date: string              // ISO string — use effectiveDate of the lead
-  type: "income"
-  category: string          // service_type
-  description: string       // service_type label for display
-  client: string            // customer_name
-  amount: number            // quote_amount
-  status: "collected" | "scheduled"
+  date: string              // ISO string
+  type: "income" | "expense"
+  category: string          // service_type or expense category key
+  description: string       // label for display
+  client: string            // customer_name or vendor
+  amount: number
+  status: "collected" | "scheduled" | "pending" | "cleared"
 }
 
 export interface FinanceChartBar {
@@ -2119,21 +2123,41 @@ export interface FinanceChartBar {
 }
 
 export interface FinanceData {
-  totalRevenue: number      // Scheduled + Completed leads quote_amount in range
-  scheduledRevenue: number  // Leads with status = scheduled in range
-  collectedRevenue: number  // Leads with status = completed in range
-  avgJobSize: number        // Average of scheduled + completed quote_amounts in range
-  outstandingAmount: number // Scheduled leads only (not yet completed)
-  outstandingCount: number  // Count of scheduled leads
-  jobCount: number          // Total scheduled + completed in range
-  totalExpenses: number     // 0 until expenses table is added
-  grossProfit: number       // totalRevenue - totalExpenses
-  profitMargin: number      // grossProfit / totalRevenue * 100, or 0
+  totalRevenue: number
+  scheduledRevenue: number
+  collectedRevenue: number
+  avgJobSize: number
+  outstandingAmount: number
+  outstandingCount: number
+  jobCount: number
+  totalExpenses: number
+  grossProfit: number
+  profitMargin: number
   leadsByStatus: Record<CanonicalLeadStatus, number>
   revenueByService: { service: string; revenue: number; jobs: number; avgJob: number }[]
+  expensesByCategory: { category: string; label: string; amount: number; count: number }[]
   recentActivity: Activity[]
-  periodTransactions: FinanceTransaction[]  // Income transactions in selected range
-  chartData: FinanceChartBar[]              // Revenue/expenses bucketed by period
+  periodTransactions: FinanceTransaction[]
+  chartData: FinanceChartBar[]
+}
+
+interface SupabaseExpense {
+  id: string
+  company_id: string
+  created_by: string
+  expense_category_id: string | null
+  amount: number | null
+  expense_date: string | null  // "YYYY-MM-DD"
+  vendor: string | null
+  description: string | null
+  status: string | null
+  payment_method: string | null
+  notes: string | null
+  receipt_url: string | null
+  linked_lead_id: string | null
+  created_at: string
+  updated_at: string | null
+  expense_categories?: { key: string; label: string | null } | null
 }
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -2141,6 +2165,7 @@ const DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
 function buildFinanceChartData(
   leads: SupabaseLead[],
+  expenses: SupabaseExpense[],
   range: string,
   start: Date,
   end: Date
@@ -2182,13 +2207,22 @@ function buildFinanceChartData(
     }
   }
 
-  return buckets.map(bucket => ({
-    label: bucket.label,
-    revenue: revenueLeads
-      .filter(l => { const d = edFn(l); return d >= bucket.start && d < bucket.end })
-      .reduce((sum, l) => sum + (l.quote_amount || 0), 0),
-    expenses: 0, // populated once expenses table is added
-  }))
+  return buckets.map(bucket => {
+    // expense_date is "YYYY-MM-DD" — parse as local date for comparison
+    const bucketExpenses = expenses.filter(exp => {
+      if (!exp.expense_date) return false
+      const [y, m, d] = exp.expense_date.split("-").map(Number)
+      const expDate = new Date(y, m - 1, d)
+      return expDate >= bucket.start && expDate < bucket.end
+    })
+    return {
+      label: bucket.label,
+      revenue: revenueLeads
+        .filter(l => { const d = edFn(l); return d >= bucket.start && d < bucket.end })
+        .reduce((sum, l) => sum + (l.quote_amount || 0), 0),
+      expenses: bucketExpenses.reduce((sum, e) => sum + (e.amount || 0), 0),
+    }
+  })
 }
 
 export async function getFinanceData(range = "this-month"): Promise<FinanceData | null> {
@@ -2221,6 +2255,27 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     console.error("Error fetching jobs for finance:", jobsError)
   }
   
+  // Date bounds for the selected range
+  const { start: rangeStart, end: rangeEnd } = getFinanceDateBounds(range)
+
+  // Format dates as YYYY-MM-DD for expense_date comparison
+  const pad = (n: number) => String(n).padStart(2, "0")
+  const toDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const startDateStr = toDateStr(rangeStart)
+  const endDateStr = toDateStr(rangeEnd)
+
+  // Fetch expenses for selected date range with category join
+  const { data: expensesRaw, error: expensesError } = await supabase
+    .from("expenses")
+    .select("*, expense_categories(key, label)")
+    .eq("company_id", companyId)
+    .gte("expense_date", startDateStr)
+    .lt("expense_date", endDateStr)
+
+  if (expensesError) {
+    console.error("Error fetching expenses for finance:", expensesError)
+  }
+
   // Fetch recent activity
   const { data: activities, error: activitiesError } = await supabase
     .from("activity_log")
@@ -2228,15 +2283,13 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(10)
-  
+
   if (activitiesError) {
     console.error("Error fetching activities for finance:", activitiesError)
   }
-  
-  const allLeads = (leads || []) as SupabaseLead[]
 
-  // Date bounds for the selected range
-  const { start: rangeStart, end: rangeEnd } = getFinanceDateBounds(range)
+  const allLeads = (leads || []) as SupabaseLead[]
+  const rangeExpenses = (expensesRaw || []) as SupabaseExpense[]
 
   // Effective date for each lead: scheduled_at if set, otherwise created_at
   const edFn = (l: SupabaseLead) =>
@@ -2259,10 +2312,26 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   const jobCount = scheduledLeads.length + completedLeads.length
   const avgJobSize = jobCount > 0 ? Math.round(totalRevenue / jobCount) : 0
 
-  // Expenses: $0 until an expenses table is added
-  const totalExpenses = 0
+  // Real expenses from DB
+  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
   const grossProfit = totalRevenue - totalExpenses
   const profitMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0
+
+  // Expenses grouped by category
+  const categoryMap = new Map<string, { label: string; amount: number; count: number }>()
+  rangeExpenses.forEach(e => {
+    const key = e.expense_categories?.key || "uncategorized"
+    const label = e.expense_categories?.label || "Uncategorized"
+    const existing = categoryMap.get(key) || { label, amount: 0, count: 0 }
+    categoryMap.set(key, {
+      label,
+      amount: existing.amount + (e.amount || 0),
+      count: existing.count + 1,
+    })
+  })
+  const expensesByCategory = Array.from(categoryMap.entries())
+    .map(([category, data]) => ({ category, ...data }))
+    .sort((a, b) => b.amount - a.amount)
 
   // Leads by status (all leads, not range-filtered — pipeline overview)
   const leadsByStatus: Record<CanonicalLeadStatus, number> = {
@@ -2294,8 +2363,8 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // Income transactions — scheduled + completed leads in range, newest first
-  const periodTransactions: FinanceTransaction[] = rangeLeads
+  // Income transactions — scheduled + completed leads in range
+  const incomeTransactions: FinanceTransaction[] = rangeLeads
     .filter(l => isScheduledStatus(l.status) || isCompletedStatus(l.status))
     .map(l => ({
       id: l.id,
@@ -2307,10 +2376,27 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
       amount: l.quote_amount || 0,
       status: isCompletedStatus(l.status) ? "collected" as const : "scheduled" as const,
     }))
+
+  // Expense transactions from real DB rows
+  const expenseTransactions: FinanceTransaction[] = rangeExpenses.map(e => ({
+    id: e.id,
+    date: e.expense_date
+      ? new Date(e.expense_date + "T00:00:00").toISOString()
+      : e.created_at,
+    type: "expense" as const,
+    category: e.expense_categories?.key || "uncategorized",
+    description: e.description || e.expense_categories?.label || "Expense",
+    client: e.vendor || "—",
+    amount: e.amount || 0,
+    status: (e.status as "pending" | "cleared") || "pending",
+  }))
+
+  // All transactions sorted newest first
+  const periodTransactions: FinanceTransaction[] = [...incomeTransactions, ...expenseTransactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   // Chart data bucketed by period
-  const chartData = buildFinanceChartData(allLeads, range, rangeStart, rangeEnd)
+  const chartData = buildFinanceChartData(allLeads, rangeExpenses, range, rangeStart, rangeEnd)
 
   // Recent activity
   const recentActivity = (activities || []).map((a: SupabaseActivity) => mapSupabaseActivityToActivity(a))
@@ -2328,8 +2414,39 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     profitMargin,
     leadsByStatus,
     revenueByService,
+    expensesByCategory,
     recentActivity,
     periodTransactions,
     chartData,
   }
+}
+
+export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from("expense_categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+  if (error) {
+    console.error("Error fetching expense categories:", error)
+    return []
+  }
+  return (data || []) as ExpenseCategory[]
+}
+
+export async function createExpense(expense: ExpenseInsert): Promise<Expense | null> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return null
+  const { data, error } = await supabase
+    .from("expenses")
+    .insert({ ...expense, company_id: companyId })
+    .select()
+    .single()
+  if (error) {
+    console.error("Error creating expense:", error)
+    return null
+  }
+  return data as Expense
 }

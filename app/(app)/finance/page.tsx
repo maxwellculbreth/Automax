@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { useFinanceData, useActivities } from "@/hooks/use-data"
+import { AddExpenseDialog } from "@/components/finance/add-expense-dialog"
 import { formatCurrency, formatRelativeTime } from "@/lib/data-service"
 import {
   Plus,
@@ -146,6 +147,7 @@ export default function FinancePage() {
   const { activities } = useActivities(10)
   const [transactionFilter, setTransactionFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showAddExpense, setShowAddExpense] = useState(false)
 
   // Build dynamic KPIs from real data
   // Total Revenue = Scheduled + Completed leads
@@ -209,7 +211,8 @@ export default function FinancePage() {
 
   const allTransactions = financeData?.periodTransactions ?? []
   const filteredTransactions = allTransactions.filter((t) => {
-    if (transactionFilter === "expenses") return false // no expense data yet
+    if (transactionFilter === "income" && t.type !== "income") return false
+    if (transactionFilter === "expenses" && t.type !== "expense") return false
     if (searchQuery && !t.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !t.category.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !t.client.toLowerCase().includes(searchQuery.toLowerCase())) return false
@@ -465,17 +468,25 @@ export default function FinancePage() {
                     <td className="px-5 py-3.5 text-[13px] text-foreground">{t.category}</td>
                     <td className="px-5 py-3.5 text-[13px] text-foreground">{t.description}</td>
                     <td className="px-5 py-3.5 text-[13px] text-muted-foreground">{t.client || "—"}</td>
-                    <td className="px-5 py-3.5 text-[13px] font-medium text-right tabular-nums whitespace-nowrap text-emerald-600 dark:text-emerald-400">
-                      +{formatCurrency(t.amount)}
+                    <td className={cn(
+                      "px-5 py-3.5 text-[13px] font-medium text-right tabular-nums whitespace-nowrap",
+                      t.type === "income"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    )}>
+                      {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={cn(
                         "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                        t.status === "collected"
+                        t.status === "collected" || t.status === "cleared"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                       )}>
-                        {t.status === "collected" ? "Collected" : "Scheduled"}
+                        {t.status === "collected" ? "Collected"
+                          : t.status === "cleared" ? "Cleared"
+                          : t.status === "pending" ? "Pending"
+                          : "Scheduled"}
                       </span>
                     </td>
                   </tr>
@@ -485,7 +496,7 @@ export default function FinancePage() {
           </div>
           <div className="border-t border-border p-4 flex items-center justify-between">
             <span className="text-[12px] text-muted-foreground">
-              Showing {filteredTransactions.length} of {allTransactions.length} income transactions
+              Showing {filteredTransactions.length} of {allTransactions.length} transactions
             </span>
             <Button variant="ghost" size="sm" className="text-[13px] h-8">
               View All
@@ -504,13 +515,47 @@ export default function FinancePage() {
                 Breakdown by category
               </p>
             </div>
-            <div className="flex flex-col items-center justify-center py-8 px-5 text-center gap-2">
-              <CreditCard className="h-8 w-8 text-muted-foreground/30" />
-              <p className="text-[13px] font-medium text-foreground">No expense data yet</p>
-              <p className="text-[12px] text-muted-foreground leading-snug">
-                Add an expenses table to track cost breakdown by category.
-              </p>
-            </div>
+            {!financeData?.expensesByCategory?.length ? (
+              <div className="flex flex-col items-center justify-center py-8 px-5 text-center gap-2">
+                <CreditCard className="h-8 w-8 text-muted-foreground/30" />
+                <p className="text-[13px] font-medium text-foreground">No expenses this period</p>
+                <p className="text-[12px] text-muted-foreground leading-snug">
+                  Add expenses to see a cost breakdown by category.
+                </p>
+                <button
+                  onClick={() => setShowAddExpense(true)}
+                  className="mt-1 text-[12px] text-primary underline underline-offset-2"
+                >
+                  Add your first expense
+                </button>
+              </div>
+            ) : (
+              <div className="p-5 space-y-3">
+                {financeData.expensesByCategory.map(cat => {
+                  const pct = financeData.totalExpenses > 0
+                    ? Math.round((cat.amount / financeData.totalExpenses) * 100)
+                    : 0
+                  return (
+                    <div key={cat.category} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[13px]">
+                        <span className="font-medium text-foreground">{cat.label}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {formatCurrency(cat.amount)}
+                          <span className="ml-1.5 text-[11px]">({pct}%)</span>
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-red-500/70 dark:bg-red-500/60"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{cat.count} expense{cat.count !== 1 ? "s" : ""}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Cash Flow & Collections */}
@@ -669,6 +714,7 @@ export default function FinancePage() {
                   key={action.label}
                   variant="outline"
                   className="w-full justify-start h-10 text-[13px]"
+                  onClick={action.label === "Add Expense" ? () => setShowAddExpense(true) : undefined}
                 >
                   <action.icon className="h-4 w-4 mr-2.5 text-muted-foreground" />
                   {action.label}
@@ -709,6 +755,8 @@ export default function FinancePage() {
           </div>
         </div>
       </div>
+
+      <AddExpenseDialog open={showAddExpense} onOpenChange={setShowAddExpense} />
     </div>
   )
 }
