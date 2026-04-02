@@ -118,6 +118,7 @@ export interface Database {
           next_follow_up_at: string | null
           scheduled_at: string | null
           completed_at: string | null
+          lost_at: string | null
           created_at: string
           updated_at: string
         }
@@ -140,6 +141,7 @@ export interface Database {
           next_follow_up_at?: string | null
           scheduled_at?: string | null
           completed_at?: string | null
+          lost_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -162,6 +164,7 @@ export interface Database {
           next_follow_up_at?: string | null
           scheduled_at?: string | null
           completed_at?: string | null
+          lost_at?: string | null
           updated_at?: string
         }
       }

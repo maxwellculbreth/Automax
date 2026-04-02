@@ -842,6 +842,7 @@ interface SupabaseLead {
   status: LeadStatusDB
   quote_amount: number | null
   completed_at: string | null
+  lost_at: string | null
   next_follow_up_at: string | null
   scheduled_at: string | null
   created_at: string
@@ -869,6 +870,7 @@ function mapSupabaseLeadToLead(supabaseLead: SupabaseLead): Lead {
     next_follow_up_at: supabaseLead.next_follow_up_at ?? null,
     scheduled_at: supabaseLead.scheduled_at ?? null,
     completed_at: supabaseLead.completed_at,
+    lost_at: supabaseLead.lost_at ?? null,
     created_at: supabaseLead.created_at,
     updated_at: supabaseLead.updated_at,
   }
@@ -1235,6 +1237,7 @@ function mapLeadUpdateToSupabase(updates: LeadUpdate & { completed_at?: string }
   if (updates.next_follow_up_at !== undefined) supabaseUpdates.next_follow_up_at = updates.next_follow_up_at
   if (updates.scheduled_at !== undefined) supabaseUpdates.scheduled_at = updates.scheduled_at
   if (updates.completed_at !== undefined) supabaseUpdates.completed_at = updates.completed_at
+  if (updates.lost_at !== undefined) supabaseUpdates.lost_at = updates.lost_at
 
   supabaseUpdates.updated_at = new Date().toISOString()
 
@@ -1801,18 +1804,23 @@ export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<Da
     })
     .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
 
-  // Close Rate — (scheduled+completed leads created in range) / (all leads created in range)
-  // Uses created_at so we measure conversion of leads that entered the pipeline in this period.
-  const leadsInRange = leads.filter((lead) => {
-    const d = new Date(lead.created_at || 0)
-    return d >= rangeStart && d < rangeEnd
-  })
-  const closedInRange = leadsInRange.filter((lead) => {
+  // Close Rate — won / (won + lost) for leads resolved in the selected range.
+  // "Won" = scheduled/completed, date = effectiveDate (scheduled_at ?? created_at).
+  // "Lost" = lost status, date = lost_at ?? created_at (when they were marked lost).
+  // Open leads (new/contacted/quoted) are excluded from both numerator and denominator.
+  const wonInRange = leads.filter((lead) => {
     const s = normalizeStatus(lead.status)
-    return s === "scheduled" || s === "completed"
+    const d = effectiveDate(lead)
+    return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
   }).length
-  const conversionRate = leadsInRange.length > 0
-    ? Math.round((closedInRange / leadsInRange.length) * 100)
+  const lostInRange = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    const d = lead.lost_at ? new Date(lead.lost_at) : new Date(lead.created_at || 0)
+    return s === "lost" && d >= rangeStart && d < rangeEnd
+  }).length
+  const resolvedInRange = wonInRange + lostInRange
+  const conversionRate = resolvedInRange > 0
+    ? Math.round((wonInRange / resolvedInRange) * 100)
     : 0
 
   // Growth — current range vs prior same-length period

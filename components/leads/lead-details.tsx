@@ -76,6 +76,9 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const [followUpDate, setFollowUpDate] = useState(
     lead.next_follow_up_at ? toLocalDatetimeInput(lead.next_follow_up_at) : ""
   )
+  const [lostDate, setLostDate] = useState(
+    lead.lost_at ? toLocalDatetimeInput(lead.lost_at) : ""
+  )
 
   // Sync local state when lead prop changes (e.g., after Supabase update)
   useEffect(() => {
@@ -88,11 +91,20 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     setEstimatedValue(lead.estimated_value?.toString() || "")
     setJobDate(lead.scheduled_at ? toLocalDatetimeInput(lead.scheduled_at) : "")
     setFollowUpDate(lead.next_follow_up_at ? toLocalDatetimeInput(lead.next_follow_up_at) : "")
-  }, [lead.id, lead.status, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at])
+    setLostDate(lead.lost_at ? toLocalDatetimeInput(lead.lost_at) : "")
+
+  }, [lead.id, lead.status, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at, lead.lost_at])
 
   const handleStatusChange = async (status: Lead["status"]) => {
     setCurrentStatus(status) // optimistic — update UI immediately
-    const result = await updateLead({ id: lead.id, updates: { status } })
+    // Auto-set lost_at when marking as lost (if not already set)
+    const updates: Parameters<typeof updateLead>[0]["updates"] = { status }
+    if (status === "lost" && !lead.lost_at) {
+      const now = new Date().toISOString()
+      updates.lost_at = now
+      setLostDate(toLocalDatetimeInput(now))
+    }
+    const result = await updateLead({ id: lead.id, updates })
     if (result) {
       mutateKPIs()
       mutateUrgent()
@@ -150,6 +162,13 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     await updateLead({
       id: lead.id,
       updates: { next_follow_up_at: followUpDate ? new Date(followUpDate).toISOString() : null },
+    })
+  }
+
+  const handleSaveLostDate = async () => {
+    await updateLead({
+      id: lead.id,
+      updates: { lost_at: lostDate ? new Date(lostDate).toISOString() : null },
     })
   }
 
@@ -335,6 +354,21 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
               className="h-9 text-[13px]"
             />
           </div>
+
+          {currentStatus === "lost" && (
+            <div className="space-y-2">
+              <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Lost Date
+              </Label>
+              <Input
+                type="datetime-local"
+                value={lostDate}
+                onChange={(e) => setLostDate(e.target.value)}
+                onBlur={handleSaveLostDate}
+                className="h-9 text-[13px]"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
