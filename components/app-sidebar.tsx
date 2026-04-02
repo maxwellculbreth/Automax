@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -15,6 +16,7 @@ import {
   Megaphone,
   LogOut,
   DollarSign,
+  Sparkles,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -22,14 +24,15 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
-const navigation = [
+const navigation: { name: string; href: string; icon: React.ElementType; badge?: number; pro?: boolean; max?: boolean }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
-  { name: "Automations", href: "/automations", icon: Zap },
+  { name: "Automaxtions", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
+  { name: "Autome", href: "/autome", icon: Sparkles, max: true },
 ]
 
 export function AppSidebar() {
@@ -61,7 +64,7 @@ export function AppSidebar() {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
             <Droplets className="h-3.5 w-3.5 text-background" />
           </div>
-          <span className="text-[14px] font-semibold text-foreground">Automa</span>
+          <span className="text-[14px] font-semibold text-foreground">Automax</span>
         </div>
       </div>
 
@@ -101,7 +104,7 @@ export function AppSidebar() {
               </div>
               {!collapsed && (
                 <span className="text-[15px] font-semibold tracking-tight text-foreground">
-                  Automa
+                  Automax
                 </span>
               )}
             </Link>
@@ -137,6 +140,11 @@ export function AppSidebar() {
                         {item.pro && (
                           <span className="flex items-center rounded bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[9px] font-semibold text-white uppercase tracking-wide">
                             Pro
+                          </span>
+                        )}
+                        {item.max && (
+                          <span className="flex items-center rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-widest shadow-sm">
+                            Max
                           </span>
                         )}
                       </>
