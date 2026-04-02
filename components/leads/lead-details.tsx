@@ -24,7 +24,9 @@ import {
   User,
   Home,
   Loader2,
+  CheckCircle,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   Select,
   SelectContent,
@@ -96,8 +98,22 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     }
   }
 
-  const handleSaveContact = async (field: "name" | "phone" | "email" | "address", value: string) => {
-    await updateLead({ id: lead.id, updates: { [field]: value || null } })
+  const isContactDirty =
+    contactName !== (lead.name || "") ||
+    contactPhone !== (lead.phone || "") ||
+    contactEmail !== (lead.email || "") ||
+    contactAddress !== (lead.address || "")
+
+  const handleSaveContact = async () => {
+    await updateLead({
+      id: lead.id,
+      updates: {
+        name: contactName || undefined,
+        phone: contactPhone || undefined,
+        email: contactEmail || null,
+        address: contactAddress || null,
+      },
+    })
   }
 
   const handleSaveNotes = async () => {
@@ -145,7 +161,6 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
               <Input
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                onBlur={() => handleSaveContact("name", contactName)}
                 placeholder="Name"
                 className="h-8 text-[13px]"
               />
@@ -155,7 +170,6 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
               <Input
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
-                onBlur={() => handleSaveContact("phone", contactPhone)}
                 placeholder="Phone"
                 className="h-8 text-[13px]"
               />
@@ -165,7 +179,6 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
               <Input
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                onBlur={() => handleSaveContact("email", contactEmail)}
                 placeholder="Email"
                 type="email"
                 className="h-8 text-[13px]"
@@ -176,7 +189,6 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
               <Input
                 value={contactAddress}
                 onChange={(e) => setContactAddress(e.target.value)}
-                onBlur={() => handleSaveContact("address", contactAddress)}
                 placeholder="Address"
                 className="h-8 text-[13px]"
               />
@@ -313,8 +325,25 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-border space-y-2">
-        <Button 
-          className="w-full h-9 text-[13px]" 
+        <Button
+          className={cn(
+            "w-full h-9 text-[13px] transition-colors",
+            isContactDirty
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+              : "bg-secondary text-muted-foreground hover:bg-secondary"
+          )}
+          onClick={handleSaveContact}
+          disabled={isUpdating || !isContactDirty}
+        >
+          {isUpdating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2" />
+          )}
+          Save Changes
+        </Button>
+        <Button
+          className="w-full h-9 text-[13px]"
           onClick={() => handleStatusChange("quoted")}
           disabled={isUpdating}
         >
