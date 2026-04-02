@@ -1630,6 +1630,7 @@ export interface DashboardKPIs {
   avgResponseTime: string
   conversionRate: number
   repeatCustomerRate: number
+  weeklyGrowth: number
 }
 
 export async function getDashboardKPIs(): Promise<DashboardKPIs> {
@@ -1641,6 +1642,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const weekStart = new Date(todayStart)
   weekStart.setDate(weekStart.getDate() - 7)
+  const prevWeekStart = new Date(weekStart)
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7)
 
   if (!companyId) {
     return {
@@ -1652,6 +1655,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
       avgResponseTime: "-",
       conversionRate: 0,
       repeatCustomerRate: 0,
+      weeklyGrowth: 0,
     }
   }
 
@@ -1682,6 +1686,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
       avgResponseTime: "-",
       conversionRate: 0,
       repeatCustomerRate: 0,
+      weeklyGrowth: 0,
     }
   }
 
@@ -1718,13 +1723,27 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     .reduce((sum, job) => sum + (job.price || 0), 0)
 
   // Close Rate - percentage of leads that became "booked" vs total decided leads
-  const totalDecidedLeads = leads.filter((lead) => 
+  const totalDecidedLeads = leads.filter((lead) =>
     lead.status === "booked" || lead.status === "lost"
   ).length
   const bookedLeads = leads.filter((lead) => lead.status === "booked").length
-  const conversionRate = totalDecidedLeads > 0 
-    ? Math.round((bookedLeads / totalDecidedLeads) * 100) 
+  const conversionRate = totalDecidedLeads > 0
+    ? Math.round((bookedLeads / totalDecidedLeads) * 100)
     : 0
+
+  // Weekly Growth - compare this week's revenue to the prior week
+  const prevWeekRevenue = jobs
+    .filter((job) => {
+      const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
+      const createdAt = new Date(job.created_at || 0)
+      const date = scheduledAt || createdAt
+      return date >= prevWeekStart && date < weekStart
+    })
+    .reduce((sum, job) => sum + (job.price || 0), 0)
+
+  const weeklyGrowth = prevWeekRevenue > 0
+    ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
+    : weeklyRevenue > 0 ? 100 : 0
 
   return {
     newLeadsToday,
@@ -1735,6 +1754,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     avgResponseTime: "< 5 min",
     conversionRate,
     repeatCustomerRate: 0,
+    weeklyGrowth,
   }
 }
 

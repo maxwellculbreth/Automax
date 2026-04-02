@@ -33,7 +33,7 @@ export function PerformanceMetrics() {
     },
     {
       label: "Weekly Growth",
-      value: "+18%",
+      value: kpis ? (kpis.weeklyGrowth >= 0 ? `+${kpis.weeklyGrowth}%` : `${kpis.weeklyGrowth}%`) : "-",
       target: "10%",
       status: "good",
       icon: TrendingUp,
