@@ -2264,11 +2264,10 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   const startDateStr = toDateStr(rangeStart)
   const endDateStr = toDateStr(rangeEnd)
 
-  // Fetch expenses for selected date range with category join
-  // Use explicit FK column hint to avoid PostgREST schema cache auto-detect failures
+  // Fetch expenses for selected date range — no FK join, categories resolved separately
   const { data: expensesRaw, error: expensesError } = await supabase
     .from("expenses")
-    .select("*, expense_categories!expense_category_id(key, label)")
+    .select("*")
     .eq("company_id", companyId)
     .gte("expense_date", startDateStr)
     .lt("expense_date", endDateStr)
@@ -2276,6 +2275,18 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   if (expensesError) {
     console.error("Error fetching expenses for finance:", expensesError)
   }
+
+  // Fetch expense categories separately to avoid PostgREST FK join dependency
+  const { data: expenseCategoriesRaw } = await supabase
+    .from("expense_categories")
+    .select("id, key, label")
+
+  const categoryById = new Map(
+    (expenseCategoriesRaw || []).map(c => [
+      c.id as string,
+      { key: c.key as string, label: c.label as string | null },
+    ])
+  )
 
   // Fetch recent activity
   const { data: activities, error: activitiesError } = await supabase
@@ -2290,7 +2301,13 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   }
 
   const allLeads = (leads || []) as SupabaseLead[]
-  const rangeExpenses = (expensesRaw || []) as SupabaseExpense[]
+  // Attach category data from the separate lookup so downstream transforms are unchanged
+  const rangeExpenses: SupabaseExpense[] = (expensesRaw || []).map(e => ({
+    ...e,
+    expense_categories: e.expense_category_id
+      ? (categoryById.get(e.expense_category_id) ?? null)
+      : null,
+  }))
 
   // Effective date for each lead: scheduled_at if set, otherwise created_at
   const edFn = (l: SupabaseLead) =>
