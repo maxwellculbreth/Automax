@@ -1676,6 +1676,29 @@ function getPrevRangeStart(range: DateRangeKey, rangeStart: Date): Date {
   return prev
 }
 
+// Returns the exclusive end of the current calendar period (i.e. start of the NEXT period).
+export function getRangeEnd(range: DateRangeKey, rangeStart: Date): Date {
+  const end = new Date(rangeStart)
+  switch (range) {
+    case "week":    end.setDate(end.getDate() + 7);       break
+    case "month":   end.setMonth(end.getMonth() + 1);     break
+    case "quarter": end.setMonth(end.getMonth() + 3);     break
+    case "year":    end.setFullYear(end.getFullYear() + 1); break
+  }
+  return end
+}
+
+// Returns a human-readable "MMM D – MMM D, YYYY" label for the current range.
+export function formatDateRangeLabel(range: DateRangeKey): string {
+  const start = getDateRangeStart(range)
+  const end = new Date(getRangeEnd(range, start))
+  end.setDate(end.getDate() - 1) // inclusive end day
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  const year = end.getFullYear()
+  return `${fmt(start)} – ${fmt(end)}, ${year}`
+}
+
 // ----- Dashboard KPIs -----
 export interface DashboardKPIs {
   newLeadsToday: number
@@ -1696,6 +1719,7 @@ export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<Da
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const rangeStart = getDateRangeStart(range)
+  const rangeEnd = getRangeEnd(range, rangeStart)       // exclusive upper bound
   const prevRangeStart = getPrevRangeStart(range, rangeStart)
 
   if (!companyId) {
@@ -1760,24 +1784,29 @@ export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<Da
     (lead) => normalizeStatus(lead.status) === "quoted"
   ).length
 
-  // Booked Jobs — scheduled/completed leads whose effective date is in the range
+  // Booked Jobs — scheduled/completed leads whose effective date falls within [rangeStart, rangeEnd)
+  // Uses scheduled_at (user-set job date) if present, otherwise created_at.
   const bookedThisWeek = leads.filter((lead) => {
     const s = normalizeStatus(lead.status)
-    return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= rangeStart
+    const d = effectiveDate(lead)
+    return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
   }).length
 
-  // Revenue — sum of quote_amount for same set
+  // Revenue — quote_amount sum for the same set of booked/completed leads in range
   const weeklyRevenue = leads
     .filter((lead) => {
       const s = normalizeStatus(lead.status)
-      return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= rangeStart
+      const d = effectiveDate(lead)
+      return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
     })
     .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
 
-  // Close Rate — (scheduled+completed created in range) / (all leads created in range)
-  const leadsInRange = leads.filter(
-    (lead) => new Date(lead.created_at || 0) >= rangeStart
-  )
+  // Close Rate — (scheduled+completed leads created in range) / (all leads created in range)
+  // Uses created_at so we measure conversion of leads that entered the pipeline in this period.
+  const leadsInRange = leads.filter((lead) => {
+    const d = new Date(lead.created_at || 0)
+    return d >= rangeStart && d < rangeEnd
+  })
   const closedInRange = leadsInRange.filter((lead) => {
     const s = normalizeStatus(lead.status)
     return s === "scheduled" || s === "completed"
