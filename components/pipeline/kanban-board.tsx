@@ -3,7 +3,6 @@
 import { useState } from "react"
 import {
   type Lead,
-  type LeadStatus,
   type CanonicalLeadStatus,
   formatCurrency,
   formatRelativeTime,
@@ -18,14 +17,13 @@ interface KanbanBoardProps {
   onDragEnd: (leadId: string, newStatus: CanonicalLeadStatus) => void
 }
 
-// Pipeline columns using canonical statuses
-const columns: { id: CanonicalLeadStatus; label: string; dotColor: string; bgColor: string }[] = [
-  { id: "new", label: "New", dotColor: "bg-blue-500", bgColor: "bg-blue-500/5 dark:bg-blue-500/10" },
-  { id: "contacted", label: "Contacted", dotColor: "bg-amber-500", bgColor: "bg-amber-500/5 dark:bg-amber-500/10" },
-  { id: "quoted", label: "Quoted", dotColor: "bg-violet-500", bgColor: "bg-violet-500/5 dark:bg-violet-500/10" },
-  { id: "scheduled", label: "Scheduled", dotColor: "bg-emerald-500", bgColor: "bg-emerald-500/5 dark:bg-emerald-500/10" },
-  { id: "completed", label: "Completed", dotColor: "bg-teal-500", bgColor: "bg-teal-500/5 dark:bg-teal-500/10" },
-  { id: "lost", label: "Lost", dotColor: "bg-red-500", bgColor: "bg-red-500/5 dark:bg-red-500/10" },
+const columns: { id: CanonicalLeadStatus; label: string; dotColor: string; accentBorder: string }[] = [
+  { id: "new",       label: "New",       dotColor: "bg-blue-500",    accentBorder: "border-t-blue-500" },
+  { id: "contacted", label: "Contacted", dotColor: "bg-amber-500",   accentBorder: "border-t-amber-500" },
+  { id: "quoted",    label: "Quoted",    dotColor: "bg-violet-500",  accentBorder: "border-t-violet-500" },
+  { id: "scheduled", label: "Scheduled", dotColor: "bg-emerald-500", accentBorder: "border-t-emerald-500" },
+  { id: "completed", label: "Completed", dotColor: "bg-teal-500",    accentBorder: "border-t-teal-500" },
+  { id: "lost",      label: "Lost",      dotColor: "bg-red-400",     accentBorder: "border-t-red-400" },
 ]
 
 export function KanbanBoard({ leads, onDragEnd }: KanbanBoardProps) {
@@ -56,7 +54,6 @@ export function KanbanBoard({ leads, onDragEnd }: KanbanBoardProps) {
   const handleDrop = (e: React.DragEvent, columnId: CanonicalLeadStatus) => {
     e.preventDefault()
     const leadId = e.dataTransfer.getData("text/plain")
-    // Compare normalized status to handle legacy values
     if (leadId && draggedLead && normalizeStatus(draggedLead.status) !== columnId) {
       onDragEnd(leadId, columnId)
     }
@@ -65,22 +62,18 @@ export function KanbanBoard({ leads, onDragEnd }: KanbanBoardProps) {
   }
 
   return (
-    <div className="flex gap-4 p-4 sm:p-5 min-w-max h-full pb-4">
+    <div className="flex gap-3 px-5 pb-6 min-w-max items-start">
       {columns.map((column) => {
-        // Normalize status to handle legacy values (booked → scheduled, complete → completed)
         const columnLeads = leads.filter((lead) => normalizeStatus(lead.status) === column.id)
-        const columnValue = columnLeads.reduce(
-          (sum, lead) => sum + (lead.estimated_value || 0),
-          0
-        )
+        const columnValue = columnLeads.reduce((sum, lead) => sum + (lead.estimated_value || 0), 0)
 
         return (
           <div
             key={column.id}
             className={cn(
-              "w-60 sm:w-72 flex-shrink-0 flex flex-col rounded-xl border border-border/60 shadow-sm",
-              column.bgColor,
-              dragOverColumn === column.id && "ring-2 ring-primary/40 border-primary/40"
+              "w-60 sm:w-64 flex-shrink-0 flex flex-col rounded-xl border border-border/60 bg-card shadow-sm border-t-2",
+              column.accentBorder,
+              dragOverColumn === column.id && "ring-2 ring-primary/40 border-primary/30"
             )}
             onDragOver={(e) => handleDragOver(e, column.id)}
             onDragLeave={handleDragLeave}
@@ -89,29 +82,30 @@ export function KanbanBoard({ leads, onDragEnd }: KanbanBoardProps) {
             {/* Column Header */}
             <div className="px-4 py-3 border-b border-border/40">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn("h-2.5 w-2.5 rounded-full", column.dotColor)} />
-                  <span className="text-[14px] font-semibold text-foreground">{column.label}</span>
+                <div className="flex items-center gap-2">
+                  <div className={cn("h-2 w-2 rounded-full flex-shrink-0", column.dotColor)} />
+                  <span className="text-[13px] font-semibold text-foreground">{column.label}</span>
                 </div>
-                <span className="text-[12px] font-medium bg-background/80 px-2 py-0.5 rounded-full text-muted-foreground tabular-nums">
+                <span className="text-[11px] font-medium text-muted-foreground tabular-nums bg-secondary/60 px-1.5 py-0.5 rounded-full">
                   {columnLeads.length}
                 </span>
               </div>
-              <div className="mt-1.5 text-[13px] font-medium text-muted-foreground tabular-nums">
-                {formatCurrency(columnValue)}
-              </div>
+              {columnValue > 0 && (
+                <div className="mt-1 text-[12px] font-medium text-muted-foreground tabular-nums">
+                  {formatCurrency(columnValue)}
+                </div>
+              )}
             </div>
 
-            {/* Column Content */}
-            <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+            {/* Column Content — capped height, scrollable */}
+            <div className="p-2.5 space-y-2 max-h-[420px] overflow-y-auto">
               {columnLeads.length === 0 ? (
                 <div className={cn(
-                  "flex flex-col items-center justify-center h-24 text-[12px] text-muted-foreground",
-                  "border-2 border-dashed border-border/60 rounded-lg bg-background/40",
-                  "transition-colors",
-                  dragOverColumn === column.id && "border-primary/50 bg-primary/5"
+                  "flex items-center justify-center h-20 text-[12px] text-muted-foreground/60",
+                  "border-2 border-dashed border-border/50 rounded-lg",
+                  dragOverColumn === column.id && "border-primary/40 bg-primary/5"
                 )}>
-                  <span className="text-muted-foreground/70">Drop here</span>
+                  Drop here
                 </div>
               ) : (
                 columnLeads.map((lead) => (
@@ -139,48 +133,45 @@ interface KanbanCardProps {
   onDragEnd: () => void
 }
 
-function KanbanCard({
-  lead,
-  isDragging,
-  onDragStart,
-  onDragEnd,
-}: KanbanCardProps) {
+function KanbanCard({ lead, isDragging, onDragStart, onDragEnd }: KanbanCardProps) {
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "rounded-lg border border-border bg-card p-3.5 cursor-grab active:cursor-grabbing transition-all",
-        "shadow-sm hover:shadow-md hover:border-border/80 hover:-translate-y-0.5",
-        isDragging && "opacity-50 rotate-1 scale-[1.02] shadow-lg ring-2 ring-primary/20"
+        "rounded-lg border border-border bg-card p-3 cursor-grab active:cursor-grabbing",
+        "shadow-sm hover:shadow-md hover:border-border/80 transition-all",
+        isDragging && "opacity-40 scale-[1.02] shadow-lg ring-2 ring-primary/20"
       )}
     >
       <div className="flex items-start gap-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <Link
             href={`/leads?id=${lead.id}`}
-            className="text-[13px] font-medium text-foreground hover:underline block truncate"
+            className="text-[13px] font-semibold text-foreground hover:underline block truncate leading-tight"
           >
             {lead.name || "Unknown"}
           </Link>
-          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
-            {lead.service || "Not specified"}
+          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+            {lead.service || "No service"}
           </p>
 
           <div className="flex items-center justify-between mt-2.5">
-            <span className="text-[13px] font-semibold text-foreground tabular-nums">
-              {lead.estimated_value ? formatCurrency(lead.estimated_value) : "-"}
+            <span className="text-[14px] font-bold text-foreground tabular-nums">
+              {lead.estimated_value ? formatCurrency(lead.estimated_value) : "—"}
             </span>
-            <span className="text-[10px] text-muted-foreground">
-              {lead.source || "Unknown"}
-            </span>
+            {lead.source && (
+              <span className="text-[10px] font-medium text-muted-foreground/70 bg-secondary/60 px-1.5 py-0.5 rounded-full truncate max-w-[80px]">
+                {lead.source}
+              </span>
+            )}
           </div>
 
           {lead.last_contact_at && (
-            <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50 text-[10px] text-muted-foreground">
-              <Clock className="h-3 w-3" />
+            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/40 text-[10px] text-muted-foreground/70">
+              <Clock className="h-2.5 w-2.5" />
               {formatRelativeTime(lead.last_contact_at)}
             </div>
           )}

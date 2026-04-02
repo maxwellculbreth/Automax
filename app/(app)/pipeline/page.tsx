@@ -1,90 +1,96 @@
 "use client"
 
-import { useState } from "react"
+import { type ElementType, useState } from "react"
 import { KanbanBoard } from "@/components/pipeline/kanban-board"
 import { useLeads, useUpdateLead } from "@/hooks/use-data"
-import { type Lead, type CanonicalLeadStatus, formatCurrency, getStatusLabel, normalizeStatus, isScheduledStatus, isCompletedStatus } from "@/lib/data-service"
-import { Button } from "@/components/ui/button"
-import { Plus, Filter, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu"
+  type CanonicalLeadStatus,
+  formatCurrency,
+  getStatusLabel,
+  normalizeStatus,
+  isScheduledStatus,
+  isCompletedStatus,
+} from "@/lib/data-service"
+import { Button } from "@/components/ui/button"
+import { Plus, Loader2, Users, TrendingUp, Calendar, DollarSign } from "lucide-react"
+import { AddLeadDialog } from "@/components/leads/add-lead-dialog"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-const services = [
-  "Driveway + Patio",
-  "Full House Wash",
-  "Commercial Storefront",
-  "Fence + Deck",
-  "Pool Deck",
+type Timeframe = "all" | "today" | "this-week" | "this-month" | "this-quarter"
+
+const timeframes: { value: Timeframe; label: string }[] = [
+  { value: "all",           label: "All Time" },
+  { value: "today",         label: "Today" },
+  { value: "this-week",     label: "This Week" },
+  { value: "this-month",    label: "This Month" },
+  { value: "this-quarter",  label: "This Quarter" },
 ]
+
+function isInTimeframe(dateStr: string | null | undefined, timeframe: Timeframe): boolean {
+  if (timeframe === "all") return true
+  if (!dateStr) return false
+  const date = new Date(dateStr)
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  if (timeframe === "today") {
+    return date >= startOfDay
+  }
+  if (timeframe === "this-week") {
+    const dayOfWeek = now.getDay() // 0 = Sunday
+    const startOfWeek = new Date(startOfDay)
+    startOfWeek.setDate(startOfDay.getDate() - dayOfWeek)
+    return date >= startOfWeek
+  }
+  if (timeframe === "this-month") {
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+  }
+  if (timeframe === "this-quarter") {
+    const q = Math.floor(now.getMonth() / 3)
+    const startOfQuarter = new Date(now.getFullYear(), q * 3, 1)
+    return date >= startOfQuarter
+  }
+  return true
+}
 
 export default function PipelinePage() {
   const { leads, isLoading, mutate: mutateLeads } = useLeads()
   const { updateLead } = useUpdateLead()
-  const [serviceFilter, setServiceFilter] = useState<string[]>([])
+  const [timeframe, setTimeframe] = useState<Timeframe>("all")
+  const [showAddLead, setShowAddLead] = useState(false)
 
-  const filteredLeads =
-    serviceFilter.length > 0
-      ? leads.filter((lead) => serviceFilter.includes(lead.service || ""))
-      : leads
+  const filteredLeads = leads.filter((l) => isInTimeframe(l.created_at, timeframe))
 
-  // All leads go into the pipeline (including lost for visibility)
-  const pipelineLeads = filteredLeads
+  const activeLeads = filteredLeads.filter(
+    (l) => !["lost", "cancelled"].includes(normalizeStatus(l.status))
+  )
+  const pipelineTotal = filteredLeads.reduce((sum, l) => sum + (l.estimated_value || 0), 0)
+  const scheduledLeads = filteredLeads.filter((l) => isScheduledStatus(l.status))
+  const scheduledValue = scheduledLeads.reduce((sum, l) => sum + (l.estimated_value || 0), 0)
+  const collectedValue = filteredLeads
+    .filter((l) => isCompletedStatus(l.status))
+    .reduce((sum, l) => sum + (l.estimated_value || 0), 0)
 
   const handleDragEnd = async (leadId: string, newStatus: CanonicalLeadStatus) => {
-    const lead = leads.find(l => l.id === leadId)
+    const lead = leads.find((l) => l.id === leadId)
     const leadName = lead?.name || "Lead"
-    
     try {
-      // If moving to completed, also set completed_at timestamp
       const updates: { status: CanonicalLeadStatus; completed_at?: string } = { status: newStatus }
       if (newStatus === "completed") {
         updates.completed_at = new Date().toISOString()
       }
-      
       const result = await updateLead({ id: leadId, updates })
       if (result) {
-        toast.success(`Status updated to ${getStatusLabel(newStatus)}`, {
-          description: `${leadName} moved to ${getStatusLabel(newStatus)}`,
-          duration: 2000,
-        })
+        toast.success(`${leadName} moved to ${getStatusLabel(newStatus)}`, { duration: 2000 })
       } else {
-        toast.error("Failed to update status", {
-          description: "Please try again",
-        })
+        toast.error("Failed to update status", { description: "Please try again" })
       }
       mutateLeads()
-    } catch (error) {
-      toast.error("Failed to update status", {
-        description: "An error occurred",
-      })
+    } catch {
+      toast.error("Failed to update status")
     }
   }
-
-  const toggleServiceFilter = (service: string) => {
-    setServiceFilter((prev) =>
-      prev.includes(service)
-        ? prev.filter((s) => s !== service)
-        : [...prev, service]
-    )
-  }
-
-  const totalValue = pipelineLeads.reduce(
-    (sum, lead) => sum + (lead.estimated_value || 0),
-    0
-  )
-
-  // Scheduled + Completed value (using normalized status)
-  const scheduledValue = pipelineLeads
-    .filter((lead) => isScheduledStatus(lead.status) || isCompletedStatus(lead.status))
-    .reduce((sum, lead) => sum + (lead.estimated_value || 0), 0)
 
   if (isLoading) {
     return (
@@ -98,73 +104,108 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background pt-14 lg:pt-0">
+    <div className="min-h-screen bg-background pt-14 lg:pt-0">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-border bg-card">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-4 sm:px-6 py-3">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Pipeline</h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-              <span className="text-[12px] sm:text-[13px] text-muted-foreground">
-                {pipelineLeads.length} active
-              </span>
-              <span className="text-muted-foreground hidden sm:inline">·</span>
-              <span className="text-[12px] sm:text-[13px] text-muted-foreground">
-                {formatCurrency(totalValue)} total
-              </span>
-              <span className="text-muted-foreground hidden sm:inline">·</span>
-              <span className="text-[12px] sm:text-[13px] text-emerald-600 dark:text-emerald-400 font-medium">
-                {formatCurrency(scheduledValue)} scheduled/completed
-              </span>
-            </div>
-          </div>
+      <header className="border-b border-border bg-card px-5 py-5 sm:px-6">
+        {/* Title row */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-lg font-semibold text-foreground">Pipeline</h1>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+            {/* Timeframe filter */}
+            <div className="hidden sm:flex items-center gap-0.5 rounded-lg border border-border bg-secondary/30 p-1">
+              {timeframes.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => setTimeframe(t.value)}
                   className={cn(
-                    "h-8 text-[13px]",
-                    serviceFilter.length > 0 && "border-foreground"
+                    "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors whitespace-nowrap",
+                    timeframe === t.value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  Filter
-                  {serviceFilter.length > 0 && (
-                    <span className="ml-1.5 rounded-full bg-foreground px-1.5 text-[10px] text-background">
-                      {serviceFilter.length}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel className="text-[12px]">Filter by Service</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {services.map((service) => (
-                  <DropdownMenuCheckboxItem
-                    key={service}
-                    checked={serviceFilter.includes(service)}
-                    onCheckedChange={() => toggleServiceFilter(service)}
-                    className="text-[13px]"
-                  >
-                    {service}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" className="h-8 text-[13px]">
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {/* Mobile timeframe select */}
+            <select
+              className="sm:hidden h-8 rounded-md border border-border bg-background px-2 text-[13px] text-foreground"
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as Timeframe)}
+            >
+              {timeframes.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            <Button size="sm" className="h-8 text-[13px]" onClick={() => setShowAddLead(true)}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add Lead
             </Button>
           </div>
         </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            label="Active Leads"
+            value={String(activeLeads.length)}
+            icon={Users}
+          />
+          <StatCard
+            label="Pipeline Total"
+            value={formatCurrency(pipelineTotal)}
+            icon={TrendingUp}
+          />
+          <StatCard
+            label="Scheduled"
+            value={scheduledLeads.length > 0
+              ? `${scheduledLeads.length} job${scheduledLeads.length !== 1 ? "s" : ""} · ${formatCurrency(scheduledValue)}`
+              : "—"
+            }
+            icon={Calendar}
+          />
+          <StatCard
+            label="Collected"
+            value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"}
+            icon={DollarSign}
+            accent
+          />
+        </div>
       </header>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto">
-        <KanbanBoard leads={pipelineLeads} onDragEnd={handleDragEnd} />
+      <div className="overflow-x-auto py-5">
+        <KanbanBoard leads={filteredLeads} onDragEnd={handleDragEnd} />
       </div>
+
+      <AddLeadDialog open={showAddLead} onOpenChange={setShowAddLead} />
+    </div>
+  )
+}
+
+interface StatCardProps {
+  label: string
+  value: string
+  icon: ElementType
+  accent?: boolean
+}
+
+function StatCard({ label, value, icon: Icon, accent }: StatCardProps) {
+  return (
+    <div className="rounded-lg border border-border bg-background px-4 py-3">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon className={cn("h-3.5 w-3.5 flex-shrink-0", accent ? "text-emerald-500" : "text-muted-foreground")} />
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide truncate">
+          {label}
+        </span>
+      </div>
+      <p className={cn(
+        "text-[15px] font-semibold tabular-nums truncate",
+        accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+      )}>
+        {value}
+      </p>
     </div>
   )
 }
