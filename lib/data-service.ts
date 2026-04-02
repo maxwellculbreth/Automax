@@ -1628,6 +1628,54 @@ export async function getAIGenerations(limit = 10): Promise<AIGeneration[]> {
   return mockAIGenerations.slice(0, limit)
 }
 
+// ----- Dashboard date range -----
+export type DateRangeKey = "week" | "month" | "quarter" | "year"
+
+export const dateRangeLabels: Record<DateRangeKey, string> = {
+  week: "this week",
+  month: "this month",
+  quarter: "this quarter",
+  year: "this year",
+}
+
+export const dateRangeButtonLabels: Record<DateRangeKey, string> = {
+  week: "This Week",
+  month: "This Month",
+  quarter: "This Quarter",
+  year: "This Year",
+}
+
+// Returns the start of the current calendar period for the given range key.
+export function getDateRangeStart(range: DateRangeKey): Date {
+  const now = new Date()
+  switch (range) {
+    case "week": {
+      const day = now.getDay()
+      const daysFromMonday = day === 0 ? 6 : day - 1
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday)
+    }
+    case "month":
+      return new Date(now.getFullYear(), now.getMonth(), 1)
+    case "quarter": {
+      const qMonth = Math.floor(now.getMonth() / 3) * 3
+      return new Date(now.getFullYear(), qMonth, 1)
+    }
+    case "year":
+      return new Date(now.getFullYear(), 0, 1)
+  }
+}
+
+function getPrevRangeStart(range: DateRangeKey, rangeStart: Date): Date {
+  const prev = new Date(rangeStart)
+  switch (range) {
+    case "week":   prev.setDate(prev.getDate() - 7);       break
+    case "month":  prev.setMonth(prev.getMonth() - 1);     break
+    case "quarter":prev.setMonth(prev.getMonth() - 3);     break
+    case "year":   prev.setFullYear(prev.getFullYear() - 1); break
+  }
+  return prev
+}
+
 // ----- Dashboard KPIs -----
 export interface DashboardKPIs {
   newLeadsToday: number
@@ -1641,17 +1689,14 @@ export interface DashboardKPIs {
   weeklyGrowth: number
 }
 
-export async function getDashboardKPIs(): Promise<DashboardKPIs> {
+export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<DashboardKPIs> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
-  
-  // Calculate date boundaries
+
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const weekStart = new Date(todayStart)
-  weekStart.setDate(weekStart.getDate() - 7)
-  const prevWeekStart = new Date(weekStart)
-  prevWeekStart.setDate(prevWeekStart.getDate() - 7)
+  const rangeStart = getDateRangeStart(range)
+  const prevRangeStart = getPrevRangeStart(range, rangeStart)
 
   if (!companyId) {
     return {
@@ -1715,42 +1760,43 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     (lead) => normalizeStatus(lead.status) === "quoted"
   ).length
 
-  // Booked Jobs this week — leads with status scheduled/completed whose effective
-  // date falls within the last 7 days
+  // Booked Jobs — scheduled/completed leads whose effective date is in the range
   const bookedThisWeek = leads.filter((lead) => {
     const s = normalizeStatus(lead.status)
-    return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= weekStart
+    return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= rangeStart
   }).length
 
-  // Weekly Revenue — sum of quote_amount for same set
+  // Revenue — sum of quote_amount for same set
   const weeklyRevenue = leads
     .filter((lead) => {
       const s = normalizeStatus(lead.status)
-      return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= weekStart
+      return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= rangeStart
     })
     .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
 
-  // Close Rate — (scheduled + completed) / all leads, all-time
-  // Will become date-filtered when date-range selector is added
-  const closedLeads = leads.filter((lead) => {
+  // Close Rate — (scheduled+completed created in range) / (all leads created in range)
+  const leadsInRange = leads.filter(
+    (lead) => new Date(lead.created_at || 0) >= rangeStart
+  )
+  const closedInRange = leadsInRange.filter((lead) => {
     const s = normalizeStatus(lead.status)
     return s === "scheduled" || s === "completed"
   }).length
-  const conversionRate = leads.length > 0
-    ? Math.round((closedLeads / leads.length) * 100)
+  const conversionRate = leadsInRange.length > 0
+    ? Math.round((closedInRange / leadsInRange.length) * 100)
     : 0
 
-  // Weekly Growth — same effective-date logic, prior week range
-  const prevWeekRevenue = leads
+  // Growth — current range vs prior same-length period
+  const prevRangeRevenue = leads
     .filter((lead) => {
       const s = normalizeStatus(lead.status)
       const d = effectiveDate(lead)
-      return (s === "scheduled" || s === "completed") && d >= prevWeekStart && d < weekStart
+      return (s === "scheduled" || s === "completed") && d >= prevRangeStart && d < rangeStart
     })
     .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
 
-  const weeklyGrowth = prevWeekRevenue > 0
-    ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
+  const weeklyGrowth = prevRangeRevenue > 0
+    ? Math.round(((weeklyRevenue - prevRangeRevenue) / prevRangeRevenue) * 100)
     : weeklyRevenue > 0 ? 100 : 0
 
   return {

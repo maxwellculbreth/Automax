@@ -39,6 +39,7 @@ import {
   type AIGeneration,
   type Company,
   type FinanceData,
+  type DateRangeKey,
 } from "@/lib/data-service"
 import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate } from "@/lib/database.types"
 
@@ -298,12 +299,12 @@ export function useCurrentUser() {
 // DASHBOARD
 // ============================================================================
 
-export function useDashboardKPIs() {
+export function useDashboardKPIs(range: DateRangeKey = "week") {
   const { data, error, isLoading, mutate } = useSWR<DashboardKPIs>(
-    "dashboard-kpis",
-    getDashboardKPIs,
+    `dashboard-kpis-${range}`,
+    () => getDashboardKPIs(range),
     {
-      refreshInterval: 60000, // Refresh every minute
+      refreshInterval: 60000,
     }
   )
 

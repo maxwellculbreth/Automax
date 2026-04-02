@@ -1,14 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import { DashboardKPIs } from "@/components/dashboard/kpi-cards"
 import { NeedsActionPanel } from "@/components/dashboard/needs-action-panel"
 import { RecentActivityFeed } from "@/components/dashboard/recent-activity"
 import { PerformanceMetrics } from "@/components/dashboard/performance-metrics"
 import { ScheduleOverview } from "@/components/dashboard/schedule-overview"
 import { useCompany } from "@/hooks/use-data"
+import { dateRangeButtonLabels, type DateRangeKey } from "@/lib/data-service"
+import { cn } from "@/lib/utils"
+
+const dateRangeKeys: DateRangeKey[] = ["week", "month", "quarter", "year"]
 
 export default function DashboardPage() {
   const { company, isLoading } = useCompany()
+  const [range, setRange] = useState<DateRangeKey>("week")
 
   return (
     <div className="min-h-screen bg-background pt-14 lg:pt-0">
@@ -23,7 +29,7 @@ export default function DashboardPage() {
               {isLoading ? "Loading..." : (company?.name ? "Dashboard" : "Welcome to your dashboard")}
             </p>
           </div>
-          <div className="sm:text-right">
+          <div className="flex flex-col sm:items-end gap-2">
             <p className="text-[13px] font-medium text-foreground">
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
@@ -35,8 +41,26 @@ export default function DashboardPage() {
       </header>
 
       <div className="px-5 py-5 sm:p-6 lg:p-8">
+        {/* Date Range Selector */}
+        <div className="mb-4 flex items-center gap-1 rounded-lg border border-border bg-card p-1 w-fit">
+          {dateRangeKeys.map((key) => (
+            <button
+              key={key}
+              onClick={() => setRange(key)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                range === key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {dateRangeButtonLabels[key]}
+            </button>
+          ))}
+        </div>
+
         {/* KPI Cards */}
-        <DashboardKPIs />
+        <DashboardKPIs range={range} />
 
         {/* Main Grid */}
         <div className="mt-5 sm:mt-6 grid gap-4 sm:gap-5 lg:gap-6 lg:grid-cols-3">
@@ -58,7 +82,7 @@ export default function DashboardPage() {
 
         {/* Performance Metrics */}
         <div className="mt-5 sm:mt-6">
-          <PerformanceMetrics />
+          <PerformanceMetrics range={range} />
         </div>
       </div>
     </div>
