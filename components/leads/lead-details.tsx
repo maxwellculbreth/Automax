@@ -68,6 +68,8 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
   const [contactPhone, setContactPhone] = useState(lead.phone || "")
   const [contactEmail, setContactEmail] = useState(lead.email || "")
   const [contactAddress, setContactAddress] = useState(lead.address || "")
+  const [service, setService] = useState(lead.service || "")
+  const [source, setSource] = useState(lead.source || "")
   const [notes, setNotes] = useState(lead.notes || "")
   const [estimatedValue, setEstimatedValue] = useState(lead.estimated_value?.toString() || "")
   const [jobDate, setJobDate] = useState(
@@ -87,13 +89,15 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     setContactPhone(lead.phone || "")
     setContactEmail(lead.email || "")
     setContactAddress(lead.address || "")
+    setService(lead.service || "")
+    setSource(lead.source || "")
     setNotes(lead.notes || "")
     setEstimatedValue(lead.estimated_value?.toString() || "")
     setJobDate(lead.scheduled_at ? toLocalDatetimeInput(lead.scheduled_at) : "")
     setFollowUpDate(lead.next_follow_up_at ? toLocalDatetimeInput(lead.next_follow_up_at) : "")
     setLostDate(lead.lost_at ? toLocalDatetimeInput(lead.lost_at) : "")
 
-  }, [lead.id, lead.status, lead.name, lead.phone, lead.email, lead.address, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at, lead.lost_at])
+  }, [lead.id, lead.status, lead.name, lead.phone, lead.email, lead.address, lead.service, lead.source, lead.notes, lead.estimated_value, lead.scheduled_at, lead.next_follow_up_at, lead.lost_at])
 
   const handleStatusChange = async (status: Lead["status"]) => {
     setCurrentStatus(status) // optimistic — update UI immediately
@@ -138,6 +142,14 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
 
   const handleSaveNotes = async () => {
     await updateLead({ id: lead.id, updates: { notes } })
+  }
+
+  const handleSaveService = async () => {
+    await updateLead({ id: lead.id, updates: { service: service || undefined } })
+  }
+
+  const handleSaveSource = async () => {
+    await updateLead({ id: lead.id, updates: { source: source || null } })
   }
 
   const handleSaveValue = async () => {
@@ -235,20 +247,26 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
           <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-3">
             Lead Info
           </h4>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <Tag className="h-3.5 w-3.5" />
-                Service
-              </span>
-              <span className="text-[13px] font-medium text-foreground">{lead.service || "Not specified"}</span>
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={service}
+                onChange={(e) => setService(e.target.value)}
+                onBlur={handleSaveService}
+                placeholder="Service"
+                className="h-8 text-[13px]"
+              />
             </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <User className="h-3.5 w-3.5" />
-                Source
-              </span>
-              <span className="text-[13px] font-medium text-foreground">{lead.source || "-"}</span>
+            <div className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <Input
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                onBlur={handleSaveSource}
+                placeholder="Source"
+                className="h-8 text-[13px]"
+              />
             </div>
             {lead.property_type && (
               <div className="flex items-center justify-between">
