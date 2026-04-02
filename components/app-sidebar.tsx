@@ -17,6 +17,7 @@ import {
   DollarSign,
   Sparkles,
   TrendingUp,
+  Star,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -30,6 +31,7 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
+  { name: "Reviews",   href: "/reviews",   icon: Star,     pro: true },
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
   { name: "Autome", href: "/autome", icon: Sparkles, max: true },
