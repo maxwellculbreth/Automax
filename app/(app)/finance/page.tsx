@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { useFinanceData, useLeads, useActivities } from "@/hooks/use-data"
+import { useFinanceData, useActivities } from "@/hooks/use-data"
 import { formatCurrency, formatRelativeTime } from "@/lib/data-service"
 import {
   Plus,
@@ -141,10 +141,9 @@ const quickActions = [
 ]
 
 export default function FinancePage() {
-  const { financeData, isLoading } = useFinanceData()
-  const { leads } = useLeads()
-  const { activities } = useActivities(10)
   const [dateRange, setDateRange] = useState("this-month")
+  const { financeData, isLoading } = useFinanceData(dateRange)
+  const { activities } = useActivities(10)
   const [transactionFilter, setTransactionFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -208,12 +207,12 @@ export default function FinancePage() {
     },
   ].filter(Boolean) as typeof aiInsights : aiInsights
 
-  const filteredTransactions = transactions.filter((t) => {
-    if (transactionFilter === "income" && t.type !== "income") return false
-    if (transactionFilter === "expenses" && t.type !== "expense") return false
-    if (searchQuery && !t.description.toLowerCase().includes(searchQuery.toLowerCase()) && 
+  const allTransactions = financeData?.periodTransactions ?? []
+  const filteredTransactions = allTransactions.filter((t) => {
+    if (transactionFilter === "expenses") return false // no expense data yet
+    if (searchQuery && !t.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !t.category.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !(t.client && t.client.toLowerCase().includes(searchQuery.toLowerCase()))) return false
+        !t.client.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
@@ -316,30 +315,44 @@ export default function FinancePage() {
             <div className="p-5">
               {/* Chart visualization */}
               <div className="space-y-4">
-                {monthlyData.map((month, i) => (
-                  <div key={month.month} className="space-y-2">
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="font-medium text-foreground">{month.month}</span>
-                      <span className="text-muted-foreground">
-                        Profit: <span className="text-emerald-600 dark:text-emerald-400 font-medium">${month.profit.toLocaleString()}</span>
-                      </span>
-                    </div>
-                    <div className="flex gap-1 h-8">
-                      <div 
-                        className="bg-primary/80 rounded-l-md flex items-center justify-center"
-                        style={{ width: `${(month.revenue / 20000) * 100}%` }}
-                      >
-                        <span className="text-[10px] font-medium text-primary-foreground">${(month.revenue / 1000).toFixed(1)}k</span>
+                {(financeData?.chartData ?? []).length === 0 ? (
+                  <p className="text-center text-[13px] text-muted-foreground py-6">No revenue data for this period.</p>
+                ) : (financeData?.chartData ?? []).map((bar) => {
+                  const maxVal = Math.max(...(financeData?.chartData ?? []).map(b => b.revenue), 1)
+                  const profit = bar.revenue - bar.expenses
+                  return (
+                    <div key={bar.label} className="space-y-2">
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="font-medium text-foreground">{bar.label}</span>
+                        <span className="text-muted-foreground">
+                          Revenue: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(profit)}</span>
+                        </span>
                       </div>
-                      <div 
-                        className="bg-red-500/80 dark:bg-red-500/60 rounded-r-md flex items-center justify-center"
-                        style={{ width: `${(month.expenses / 20000) * 100}%` }}
-                      >
-                        <span className="text-[10px] font-medium text-white">${(month.expenses / 1000).toFixed(1)}k</span>
+                      <div className="flex gap-1 h-8">
+                        <div
+                          className="bg-primary/80 rounded-l-md flex items-center justify-center min-w-[2px]"
+                          style={{ width: `${Math.max((bar.revenue / maxVal) * 85, bar.revenue > 0 ? 4 : 0)}%` }}
+                        >
+                          {bar.revenue > 0 && (
+                            <span className="text-[10px] font-medium text-primary-foreground px-1 truncate">
+                              {bar.revenue >= 1000 ? `$${(bar.revenue / 1000).toFixed(1)}k` : `$${bar.revenue}`}
+                            </span>
+                          )}
+                        </div>
+                        {bar.expenses > 0 && (
+                          <div
+                            className="bg-red-500/80 dark:bg-red-500/60 rounded-r-md flex items-center justify-center"
+                            style={{ width: `${(bar.expenses / maxVal) * 85}%` }}
+                          >
+                            <span className="text-[10px] font-medium text-white px-1">
+                              {bar.expenses >= 1000 ? `$${(bar.expenses / 1000).toFixed(1)}k` : `$${bar.expenses}`}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <div className="flex items-center gap-4 mt-5 pt-4 border-t border-border">
                 <div className="flex items-center gap-2">
@@ -365,23 +378,25 @@ export default function FinancePage() {
             <div className="p-5 space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-[13px] text-muted-foreground">Revenue</span>
-                <span className="text-[14px] font-semibold text-foreground">$18,450</span>
+                <span className="text-[14px] font-semibold text-foreground">{formatCurrency(financeData?.totalRevenue ?? 0)}</span>
               </div>
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-[13px] text-muted-foreground">Expenses</span>
-                <span className="text-[14px] font-semibold text-red-600 dark:text-red-400">-$4,920</span>
+                <span className="text-[14px] font-semibold text-muted-foreground">
+                  {financeData?.totalExpenses ? `-${formatCurrency(financeData.totalExpenses)}` : "—"}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-[13px] font-medium text-foreground">Gross Profit</span>
-                <span className="text-[16px] font-bold text-emerald-600 dark:text-emerald-400">$13,530</span>
+                <span className="text-[16px] font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(financeData?.grossProfit ?? 0)}</span>
               </div>
               <div className="flex items-center justify-between py-3">
                 <span className="text-[13px] text-muted-foreground">Profit Margin</span>
                 <div className="flex items-center gap-2">
                   <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 dark:bg-emerald-400 rounded-full" style={{ width: "73%" }} />
+                    <div className="h-full bg-emerald-500 dark:bg-emerald-400 rounded-full" style={{ width: `${financeData?.profitMargin ?? 0}%` }} />
                   </div>
-                  <span className="text-[14px] font-semibold text-foreground">73%</span>
+                  <span className="text-[14px] font-semibold text-foreground">{financeData?.profitMargin ?? 0}%</span>
                 </div>
               </div>
             </div>
@@ -450,22 +465,17 @@ export default function FinancePage() {
                     <td className="px-5 py-3.5 text-[13px] text-foreground">{t.category}</td>
                     <td className="px-5 py-3.5 text-[13px] text-foreground">{t.description}</td>
                     <td className="px-5 py-3.5 text-[13px] text-muted-foreground">{t.client || "—"}</td>
-                    <td className={cn(
-                      "px-5 py-3.5 text-[13px] font-medium text-right tabular-nums whitespace-nowrap",
-                      t.type === "income" 
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    )}>
-                      {t.type === "income" ? "+" : "-"}${t.amount}
+                    <td className="px-5 py-3.5 text-[13px] font-medium text-right tabular-nums whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                      +{formatCurrency(t.amount)}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={cn(
                         "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                        t.status === "paid" || t.status === "cleared"
+                        t.status === "collected"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                       )}>
-                        {t.status === "paid" ? "Paid" : t.status === "cleared" ? "Cleared" : "Pending"}
+                        {t.status === "collected" ? "Collected" : "Scheduled"}
                       </span>
                     </td>
                   </tr>
@@ -475,7 +485,7 @@ export default function FinancePage() {
           </div>
           <div className="border-t border-border p-4 flex items-center justify-between">
             <span className="text-[12px] text-muted-foreground">
-              Showing {filteredTransactions.length} of {transactions.length} transactions
+              Showing {filteredTransactions.length} of {allTransactions.length} income transactions
             </span>
             <Button variant="ghost" size="sm" className="text-[13px] h-8">
               View All
@@ -494,26 +504,12 @@ export default function FinancePage() {
                 Breakdown by category
               </p>
             </div>
-            <div className="p-5 space-y-3">
-              {expenseCategories.map((cat) => (
-                <div key={cat.name} className="flex items-center gap-3">
-                  <div className={cn("flex h-8 w-8 items-center justify-center rounded-md", cat.color)}>
-                    <cat.icon className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[13px] font-medium text-foreground">{cat.name}</span>
-                      <span className="text-[13px] font-medium text-foreground tabular-nums">${cat.amount}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div className={cn("h-full rounded-full", cat.color)} style={{ width: `${cat.percent}%` }} />
-                      </div>
-                      <span className="text-[11px] text-muted-foreground tabular-nums w-8">{cat.percent}%</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-8 px-5 text-center gap-2">
+              <CreditCard className="h-8 w-8 text-muted-foreground/30" />
+              <p className="text-[13px] font-medium text-foreground">No expense data yet</p>
+              <p className="text-[12px] text-muted-foreground leading-snug">
+                Add an expenses table to track cost breakdown by category.
+              </p>
             </div>
           </div>
 
@@ -529,45 +525,48 @@ export default function FinancePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-secondary/30">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Booked</p>
-                  <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">$7,800</p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">Upcoming jobs</p>
+                  <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">{formatCurrency(financeData?.scheduledRevenue ?? 0)}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">{financeData?.outstandingCount ?? 0} upcoming jobs</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Collected</p>
-                  <p className="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">$15,200</p>
+                  <p className="mt-1 text-xl font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(financeData?.collectedRevenue ?? 0)}</p>
                   <p className="mt-1 text-[12px] text-muted-foreground">This period</p>
                 </div>
               </div>
-              <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Outstanding Balance</p>
+              {(financeData?.outstandingCount ?? 0) > 0 && (
+                <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">Outstanding Balance</p>
+                  </div>
+                  <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">{formatCurrency(financeData?.outstandingAmount ?? 0)}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">{financeData?.outstandingCount} scheduled job{financeData?.outstandingCount !== 1 ? "s" : ""} not yet completed</p>
                 </div>
-                <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">$3,250</p>
-                <p className="mt-1 text-[12px] text-muted-foreground">4 unpaid invoices</p>
-              </div>
+              )}
               <div className="space-y-2">
-                <p className="text-[12px] font-medium text-muted-foreground">Recent Payments</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <span className="text-[13px] text-foreground">Sarah Mitchell</span>
-                    </div>
-                    <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">+$325</span>
+                <p className="text-[12px] font-medium text-muted-foreground">Recent Completed Jobs</p>
+                {(financeData?.periodTransactions ?? []).filter(t => t.status === "collected").slice(0, 4).length === 0 ? (
+                  <p className="text-[13px] text-muted-foreground py-2">No completed jobs this period.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(financeData?.periodTransactions ?? [])
+                      .filter(t => t.status === "collected")
+                      .slice(0, 4)
+                      .map(t => (
+                        <div key={t.id} className="flex items-center justify-between py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <span className="text-[13px] text-foreground truncate max-w-[120px]">{t.client}</span>
+                          </div>
+                          <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">+{formatCurrency(t.amount)}</span>
+                        </div>
+                      ))
+                    }
                   </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <span className="text-[13px] text-foreground">Daniel Culbreth</span>
-                    </div>
-                    <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400 tabular-nums">+$350</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

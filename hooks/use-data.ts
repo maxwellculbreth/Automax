@@ -406,10 +406,10 @@ export function useCompany() {
 // FINANCE
 // ============================================================================
 
-export function useFinanceData() {
+export function useFinanceData(range = "this-month") {
   const { data, error, isLoading, mutate } = useSWR<FinanceData | null>(
-    "finance-data",
-    getFinanceData,
+    `finance-data-${range}`,
+    () => getFinanceData(range),
     {
       refreshInterval: 60000, // Refresh every minute
     }
