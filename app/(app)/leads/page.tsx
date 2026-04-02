@@ -101,7 +101,11 @@ export default function LeadsPage() {
       {/* Lead Details Panel - desktop only */}
       {selectedLead && showDetails && (
         <div className="hidden lg:block">
-          <LeadDetails lead={selectedLead} onClose={() => setShowDetails(false)} />
+          <LeadDetails
+            lead={selectedLead}
+            onClose={() => setShowDetails(false)}
+            onDelete={() => setSelectedLead(null)}
+          />
         </div>
       )}
 

@@ -10,6 +10,7 @@ import {
   getLead,
   createLead,
   updateLead,
+  deleteLead,
   getMessages,
   createMessage,
   markMessagesRead,
@@ -111,6 +112,30 @@ export function useUpdateLead() {
   return {
     updateLead: trigger,
     isUpdating: isMutating,
+  }
+}
+
+export function useDeleteLead() {
+  const { mutate: mutateLeads } = useSWR<Lead[]>("leads")
+
+  const { trigger, isMutating } = useSWRMutation(
+    "leads",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteLead(arg)
+      if (success) {
+        // Remove the lead from the cache immediately
+        mutateLeads(
+          (current: Lead[] | undefined) => current?.filter((l) => l.id !== arg) ?? [],
+          { revalidate: false }
+        )
+      }
+      return success
+    }
+  )
+
+  return {
+    deleteLead: trigger,
+    isDeleting: isMutating,
   }
 }
 

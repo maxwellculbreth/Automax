@@ -10,7 +10,7 @@ import {
   formatCurrency,
   formatRelativeTime,
 } from "@/lib/data-service"
-import { useUpdateLead, useDashboardKPIs, useUrgentItems, useActivities, useUpcomingJobs, useJobs } from "@/hooks/use-data"
+import { useUpdateLead, useDeleteLead, useDashboardKPIs, useUrgentItems, useActivities, useUpcomingJobs, useJobs } from "@/hooks/use-data"
 import {
   X,
   Phone,
@@ -25,7 +25,20 @@ import {
   Home,
   Loader2,
   CheckCircle,
+  Trash2,
+  Pencil,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -38,6 +51,7 @@ import {
 interface LeadDetailsProps {
   lead: Lead
   onClose: () => void
+  onDelete?: () => void
 }
 
 // Format a UTC ISO string as local time for a datetime-local input.
@@ -56,8 +70,9 @@ const statusOptions = [
   { value: "lost", label: "Lost" },
 ] as const
 
-export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
+export function LeadDetails({ lead, onClose, onDelete }: LeadDetailsProps) {
   const { updateLead, isUpdating } = useUpdateLead()
+  const { deleteLead, isDeleting } = useDeleteLead()
   const { mutate: mutateKPIs } = useDashboardKPIs()
   const { mutate: mutateUrgent } = useUrgentItems()
   const { mutate: mutateActivities } = useActivities()
@@ -184,23 +199,59 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
     })
   }
 
+  const handleDelete = async () => {
+    const success = await deleteLead(lead.id)
+    if (success) {
+      onDelete?.()
+      onClose()
+    }
+  }
+
   return (
     <div className="w-72 flex-shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="text-[13px] font-semibold text-foreground">Details</h3>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete lead?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <span className="font-medium text-foreground">{lead.name || "this lead"}</span> and all associated data. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Contact Section */}
         <div className="px-4 py-4 border-b border-border">
-          <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-3">
-            Contact
-          </h4>
+          <div className="flex items-center gap-1.5 mb-3">
+            <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Contact</h4>
+            <Pencil className="h-2.5 w-2.5 text-muted-foreground/50" />
+            <span className="text-[10px] text-muted-foreground/50">autosaves</span>
+          </div>
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -244,9 +295,11 @@ export function LeadDetails({ lead, onClose }: LeadDetailsProps) {
 
         {/* Lead Info Section */}
         <div className="px-4 py-4 border-b border-border">
-          <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-3">
-            Lead Info
-          </h4>
+          <div className="flex items-center gap-1.5 mb-3">
+            <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Lead Info</h4>
+            <Pencil className="h-2.5 w-2.5 text-muted-foreground/50" />
+            <span className="text-[10px] text-muted-foreground/50">autosaves</span>
+          </div>
           <div className="space-y-2.5">
             <div className="flex items-center gap-2">
               <Tag className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />

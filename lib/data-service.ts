@@ -1231,6 +1231,7 @@ function mapLeadUpdateToSupabase(updates: LeadUpdate & { completed_at?: string }
   if (updates.email !== undefined) supabaseUpdates.email = updates.email
   if (updates.address !== undefined) supabaseUpdates.address = updates.address
   if (updates.service !== undefined) supabaseUpdates.service_type = updates.service
+  if (updates.source !== undefined) supabaseUpdates.source = updates.source
   if (updates.status !== undefined) supabaseUpdates.status = normalizeStatus(updates.status)
   if (updates.estimated_value !== undefined) supabaseUpdates.quote_amount = updates.estimated_value
   if (updates.notes !== undefined) supabaseUpdates.message = updates.notes
@@ -1344,6 +1345,24 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
   }
 
   return mapSupabaseLeadToLead(updatedLead)
+}
+
+export async function deleteLead(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+
+  const { error } = await supabase
+    .from("leads")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+
+  if (error) {
+    console.error("Error deleting lead:", error)
+    return false
+  }
+  return true
 }
 
 // ----- Messages (uses Supabase "converstaions" table - note the typo in the table name) -----
