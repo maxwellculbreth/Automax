@@ -1667,24 +1667,19 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     }
   }
 
-  // Fetch leads and jobs in parallel for efficiency
-  const [leadsResult, jobsResult] = await Promise.all([
-    supabase.from("leads").select("*").eq("company_id", companyId),
-    supabase.from("jobs").select("*").eq("company_id", companyId),
-  ])
+  // Fetch leads only — all KPIs are derived from the leads table
+  const { data: leadsData, error: leadsError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("company_id", companyId)
 
-  const leads = leadsResult.data || []
-  const jobs = jobsResult.data || []
-
-  if (leadsResult.error) {
-    console.error("Error fetching leads for KPIs:", leadsResult.error)
-  }
-  if (jobsResult.error) {
-    console.error("Error fetching jobs for KPIs:", jobsResult.error)
+  if (leadsError) {
+    console.error("Error fetching leads for KPIs:", leadsError)
   }
 
-  // If both failed, return default values
-  if (!leads.length && !jobs.length) {
+  const leads = leadsData || []
+
+  if (!leads.length) {
     return {
       newLeadsToday: 0,
       leadsAwaitingResponse: 0,
@@ -1698,56 +1693,61 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     }
   }
 
-  // New Leads Today - leads created today with status "new"
+  // For each lead, the effective date is scheduled_at (user-set job date) if present,
+  // otherwise created_at. This matches the pipeline display logic.
+  const effectiveDate = (lead: { scheduled_at?: string | null; created_at?: string | null }): Date =>
+    lead.scheduled_at ? new Date(lead.scheduled_at) : new Date(lead.created_at || 0)
+
+  // New Leads Today
   const newLeadsToday = leads.filter((lead) => {
     const createdAt = new Date(lead.created_at || 0)
-    return createdAt >= todayStart && (lead.status === "new" || !lead.status)
+    return createdAt >= todayStart && normalizeStatus(lead.status) === "new"
   }).length
 
-  // Awaiting Response - leads with status "new" or "contacted" that need attention
+  // Awaiting Response
   const leadsAwaitingResponse = leads.filter((lead) => {
-    const status = lead.status || "new"
-    return status === "new" || status === "contacted"
+    const s = normalizeStatus(lead.status)
+    return s === "new" || s === "contacted"
   }).length
 
-  // Quotes Out - leads with status "quoted"
-  const quotesOutstanding = leads.filter((lead) => lead.status === "quoted").length
-
-  // Booked Jobs this week - count from jobs table (scheduled this week)
-  const bookedThisWeek = jobs.filter((job) => {
-    const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
-    const createdAt = new Date(job.created_at || 0)
-    // Include jobs scheduled this week OR created this week
-    return (scheduledAt && scheduledAt >= weekStart) || createdAt >= weekStart
-  }).length
-
-  // Weekly Revenue - sum of price from jobs created/scheduled this week
-  const weeklyRevenue = jobs
-    .filter((job) => {
-      const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
-      const createdAt = new Date(job.created_at || 0)
-      return (scheduledAt && scheduledAt >= weekStart) || createdAt >= weekStart
-    })
-    .reduce((sum, job) => sum + (job.price || 0), 0)
-
-  // Close Rate - percentage of leads that became "booked" vs total decided leads
-  const totalDecidedLeads = leads.filter((lead) =>
-    lead.status === "booked" || lead.status === "lost"
+  // Quotes Out
+  const quotesOutstanding = leads.filter(
+    (lead) => normalizeStatus(lead.status) === "quoted"
   ).length
-  const bookedLeads = leads.filter((lead) => lead.status === "booked").length
-  const conversionRate = totalDecidedLeads > 0
-    ? Math.round((bookedLeads / totalDecidedLeads) * 100)
+
+  // Booked Jobs this week — leads with status scheduled/completed whose effective
+  // date falls within the last 7 days
+  const bookedThisWeek = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= weekStart
+  }).length
+
+  // Weekly Revenue — sum of quote_amount for same set
+  const weeklyRevenue = leads
+    .filter((lead) => {
+      const s = normalizeStatus(lead.status)
+      return (s === "scheduled" || s === "completed") && effectiveDate(lead) >= weekStart
+    })
+    .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
+
+  // Close Rate — (scheduled + completed) / all leads, all-time
+  // Will become date-filtered when date-range selector is added
+  const closedLeads = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    return s === "scheduled" || s === "completed"
+  }).length
+  const conversionRate = leads.length > 0
+    ? Math.round((closedLeads / leads.length) * 100)
     : 0
 
-  // Weekly Growth - compare this week's revenue to the prior week
-  const prevWeekRevenue = jobs
-    .filter((job) => {
-      const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
-      const createdAt = new Date(job.created_at || 0)
-      const date = scheduledAt || createdAt
-      return date >= prevWeekStart && date < weekStart
+  // Weekly Growth — same effective-date logic, prior week range
+  const prevWeekRevenue = leads
+    .filter((lead) => {
+      const s = normalizeStatus(lead.status)
+      const d = effectiveDate(lead)
+      return (s === "scheduled" || s === "completed") && d >= prevWeekStart && d < weekStart
     })
-    .reduce((sum, job) => sum + (job.price || 0), 0)
+    .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
 
   const weeklyGrowth = prevWeekRevenue > 0
     ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
