@@ -95,9 +95,14 @@ export function useUpdateLead() {
     "leads",
     async (_key: string, { arg }: { arg: { id: string; updates: LeadUpdate & { completed_at?: string } } }) => {
       const result = await updateLead(arg.id, arg.updates)
-      // Revalidate leads list after successful update
       if (result) {
-        mutateLeads()
+        // Patch the cache immediately so the list badge updates without waiting
+        // for a full re-fetch. revalidate:true runs a background refresh to confirm.
+        mutateLeads(
+          (current: Lead[] | undefined) =>
+            current?.map((l) => (l.id === result.id ? result : l)) ?? [],
+          { revalidate: true }
+        )
       }
       return result
     }
