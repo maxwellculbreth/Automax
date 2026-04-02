@@ -444,13 +444,15 @@ export function useCreateExpense() {
   const { trigger, isMutating } = useSWRMutation(
     "create-expense",
     async (_key: string, { arg }: { arg: ExpenseInsert }) => {
-      const result = await createExpense(arg)
-      if (result) {
-        // Invalidate all finance-data range keys
+      const success = await createExpense(arg)
+      if (success) {
+        // Invalidate all finance-data range keys so the Finance page re-fetches
         const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
-        await Promise.all(ranges.map(r => globalMutate(`finance-data-${r}`)))
+        await Promise.all(
+          ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true }))
+        )
       }
-      return result
+      return success
     }
   )
 

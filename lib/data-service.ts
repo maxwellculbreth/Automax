@@ -2265,9 +2265,10 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   const endDateStr = toDateStr(rangeEnd)
 
   // Fetch expenses for selected date range with category join
+  // Use explicit FK column hint to avoid PostgREST schema cache auto-detect failures
   const { data: expensesRaw, error: expensesError } = await supabase
     .from("expenses")
-    .select("*, expense_categories(key, label)")
+    .select("*, expense_categories!expense_category_id(key, label)")
     .eq("company_id", companyId)
     .gte("expense_date", startDateStr)
     .lt("expense_date", endDateStr)
@@ -2435,18 +2436,16 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
   return (data || []) as ExpenseCategory[]
 }
 
-export async function createExpense(expense: ExpenseInsert): Promise<Expense | null> {
+export async function createExpense(expense: ExpenseInsert): Promise<boolean> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
-  if (!companyId) return null
-  const { data, error } = await supabase
+  if (!companyId) return false
+  const { error } = await supabase
     .from("expenses")
     .insert({ ...expense, company_id: companyId })
-    .select()
-    .single()
   if (error) {
     console.error("Error creating expense:", error)
-    return null
+    return false
   }
-  return data as Expense
+  return true
 }
