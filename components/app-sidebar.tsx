@@ -16,6 +16,7 @@ import {
   LogOut,
   DollarSign,
   Sparkles,
+  TrendingUp,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -32,6 +33,7 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
   { name: "Autome", href: "/autome", icon: Sparkles, max: true },
+  { name: "Projection", href: "/projection", icon: TrendingUp, max: true },
 ]
 
 export function AppSidebar() {
