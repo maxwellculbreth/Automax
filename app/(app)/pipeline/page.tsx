@@ -64,7 +64,7 @@ export default function PipelinePage() {
     [leads, timeframe]
   )
 
-  // ── Stat card values ──────────────────────────────────────────────────────
+  // Stat card values
   const activeLeads    = filteredLeads.filter(l => !["lost", "cancelled"].includes(normalizeStatus(l.status)))
   const completedLeads = filteredLeads.filter(l => isCompletedStatus(l.status))
   const scheduledLeads = filteredLeads.filter(l => isScheduledStatus(l.status))
@@ -74,11 +74,11 @@ export default function PipelinePage() {
   const scheduledValue = scheduledLeads.reduce((s, l) => s + (l.estimated_value ?? 0), 0)
   const collectedValue = completedLeads.reduce((s, l) => s + (l.estimated_value ?? 0), 0)
 
-  // ── Insights metrics ──────────────────────────────────────────────────────
+  // Insights metrics
   const decidedCount   = completedLeads.length + lostLeads.length
   const leadsWithValue = filteredLeads.filter(l => (l.estimated_value ?? 0) > 0)
-  const conversionRate = filteredLeads.length > 0  ? Math.round(completedLeads.length / filteredLeads.length * 100) : 0
-  const closeRate      = decidedCount > 0           ? Math.round(completedLeads.length / decidedCount * 100) : 0
+  const conversionRate = filteredLeads.length > 0 ? Math.round(completedLeads.length / filteredLeads.length * 100) : 0
+  const closeRate      = decidedCount > 0          ? Math.round(completedLeads.length / decidedCount * 100) : 0
   const avgTicket      = leadsWithValue.length > 0  ? leadsWithValue.reduce((s, l) => s + (l.estimated_value ?? 0), 0) / leadsWithValue.length : 0
 
   const stageData = KANBAN_COLUMNS.map(col => ({
@@ -88,32 +88,31 @@ export default function PipelinePage() {
   }))
   const maxStageCount = Math.max(...stageData.map(s => s.count), 1)
 
-  // ── Attention items ───────────────────────────────────────────────────────
+  // Attention items
   const sevenDaysAgo = useMemo(() => new Date(Date.now() - 7 * 86_400_000), [])
 
   const needsContact = useMemo(() =>
     activeLeads.filter(l => {
       const last = l.last_contact_at ? new Date(l.last_contact_at) : null
       return !last || last < sevenDaysAgo
-    }).slice(0, 5),
+    }).slice(0, 6),
     [activeLeads, sevenDaysAgo]
   )
 
   const unquoted = useMemo(() =>
-    filteredLeads.filter(l => normalizeStatus(l.status) === "contacted" && !(l.estimated_value ?? 0)).slice(0, 5),
+    filteredLeads.filter(l => normalizeStatus(l.status) === "contacted" && !(l.estimated_value ?? 0)).slice(0, 6),
     [filteredLeads]
   )
 
   const attentionCount = needsContact.length + unquoted.length
 
-  // ── Drag-and-drop with optimistic update ──────────────────────────────────
+  // Drag-and-drop with optimistic update
   const handleDragEnd = async (leadId: string, newStatus: CanonicalLeadStatus) => {
     const lead = leads.find(l => l.id === leadId)
     if (!lead) return
     const prevStatus = lead.status
 
-    // Optimistic: move card immediately — updates both Pipeline AND Lead Inbox
-    // because both use the shared SWR "leads" cache key
+    // Optimistic: move card instantly — shared SWR cache updates both Pipeline + Lead Inbox
     globalMutate(
       "leads",
       (current: Lead[] | undefined) =>
@@ -129,9 +128,8 @@ export default function PipelinePage() {
 
       if (result) {
         toast.success(`${lead.name} → ${getStatusLabel(newStatus)}`, { duration: 2000 })
-        mutateLeads() // confirm with fresh server data
+        mutateLeads()
       } else {
-        // Revert optimistic update
         globalMutate(
           "leads",
           (current: Lead[] | undefined) =>
@@ -141,7 +139,7 @@ export default function PipelinePage() {
         toast.error("Failed to update status", { description: "Please try again" })
       }
     } catch {
-      mutateLeads() // re-fetch to restore true state
+      mutateLeads()
       toast.error("Failed to update status")
     }
   }
@@ -157,12 +155,11 @@ export default function PipelinePage() {
   return (
     <div className="min-h-screen bg-background pt-14 lg:pt-0">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="border-b border-border bg-card px-5 py-5 sm:px-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-semibold text-foreground">Pipeline</h1>
           <div className="flex items-center gap-2">
-            {/* Desktop timeframe pills */}
             <div className="hidden sm:flex items-center gap-0.5 rounded-lg border border-border bg-secondary/30 p-1">
               {TIMEFRAMES.map(t => (
                 <button
@@ -179,7 +176,6 @@ export default function PipelinePage() {
                 </button>
               ))}
             </div>
-            {/* Mobile select */}
             <select
               className="sm:hidden h-8 rounded-md border border-border bg-background px-2 text-[13px] text-foreground"
               value={timeframe}
@@ -196,8 +192,8 @@ export default function PipelinePage() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Active Leads"   value={String(activeLeads.length)}                    icon={Users} />
-          <StatCard label="Pipeline Total" value={formatCurrency(pipelineTotal)}                  icon={TrendingUp} />
+          <StatCard label="Active Leads"   value={String(activeLeads.length)}   icon={Users} />
+          <StatCard label="Pipeline Total" value={formatCurrency(pipelineTotal)} icon={TrendingUp} />
           <StatCard
             label="Scheduled"
             value={scheduledLeads.length > 0
@@ -206,111 +202,138 @@ export default function PipelinePage() {
             }
             icon={Calendar}
           />
-          <StatCard label="Collected"     value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"} icon={DollarSign} accent />
+          <StatCard label="Collected" value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"} icon={DollarSign} accent />
         </div>
       </header>
 
-      {/* ── Body: board + insights panel ───────────────────────────────── */}
-      <div className="flex">
+      {/*
+        ── Scrollable content area ────────────────────────────────────────
+        Both the board and the insights panel sit inside a single
+        overflow-x-auto container. The min-w-max wrapper ensures the
+        insights panel is always exactly as wide as the six columns.
+      */}
+      <div className="overflow-x-auto">
+        <div className="min-w-max">
 
-        {/* Board — scrollable horizontally */}
-        <div className="flex-1 min-w-0 overflow-x-auto py-5">
-          <KanbanBoard
-            leads={filteredLeads}
-            onDragEnd={handleDragEnd}
-            onAddLead={() => setShowAddLead(true)}
-          />
-        </div>
-
-        {/* Insights panel — wide enough to breathe */}
-        <aside className="hidden xl:flex flex-col w-[320px] flex-shrink-0 border-l border-border bg-card">
-          <div className="sticky top-0 max-h-screen overflow-y-auto px-5 py-5 space-y-6">
-
-            {/* Panel header */}
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-semibold text-foreground">Pipeline Insights</span>
-              {attentionCount > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                  <AlertCircle className="h-2.5 w-2.5" />
-                  {attentionCount} to review
-                </span>
-              )}
-            </div>
-
-            {/* ── Key Metrics ── */}
-            <InsightsSection label="Performance">
-              <div className="grid grid-cols-2 gap-2.5">
-                <MetricTile label="Conv. Rate"  value={`${conversionRate}%`}
-                  sub="leads → closed" />
-                <MetricTile label="Avg Ticket"  value={avgTicket > 0 ? formatCurrency(avgTicket) : "—"}
-                  sub="per lead" />
-                <MetricTile label="Close Rate"  value={`${closeRate}%`}
-                  sub="of decided leads" />
-                <MetricTile label="Revenue"     value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"}
-                  sub="collected" accent />
-              </div>
-            </InsightsSection>
-
-            {/* ── Stage Breakdown ── */}
-            <InsightsSection label="Stage Breakdown">
-              <div className="space-y-3">
-                {stageData.map(stage => (
-                  <div key={stage.id} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", stage.dotColor)} />
-                        <span className="text-[12px] text-foreground/80">{stage.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {stage.value > 0 && (
-                          <span className="text-[11px] text-muted-foreground tabular-nums">{formatCurrency(stage.value)}</span>
-                        )}
-                        <span className="text-[11px] font-semibold text-foreground tabular-nums w-5 text-right">{stage.count}</span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-secondary/60 overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all duration-500", stage.dotColor, "opacity-60")}
-                        style={{ width: `${Math.round(stage.count / maxStageCount * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </InsightsSection>
-
-            {/* ── Needs Attention ── */}
-            <InsightsSection label="Needs Attention">
-              {attentionCount === 0 ? (
-                <div className="py-4 text-center">
-                  <p className="text-[12px] text-muted-foreground/50">All caught up</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {needsContact.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <MessageSquareDashed className="h-3.5 w-3.5 text-amber-500" />
-                        <span className="text-[11px] font-semibold text-muted-foreground">No contact in 7+ days</span>
-                      </div>
-                      {needsContact.map(l => <AttentionItem key={l.id} lead={l} />)}
-                    </div>
-                  )}
-                  {unquoted.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <FileQuestion className="h-3.5 w-3.5 text-violet-500" />
-                        <span className="text-[11px] font-semibold text-muted-foreground">Contacted but unquoted</span>
-                      </div>
-                      {unquoted.map(l => <AttentionItem key={l.id} lead={l} />)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </InsightsSection>
-
+          {/* Board */}
+          <div className="pt-5">
+            <KanbanBoard
+              leads={filteredLeads}
+              onDragEnd={handleDragEnd}
+              onAddLead={() => setShowAddLead(true)}
+            />
           </div>
-        </aside>
+
+          {/* ── Bottom insights panel ───────────────────────────────── */}
+          <div className="px-5 pb-8">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[13px] font-semibold text-foreground">Pipeline Insights</span>
+                  <span className="text-[11px] text-muted-foreground/60">
+                    {timeframe === "all" ? "All time" : TIMEFRAMES.find(t => t.value === timeframe)?.label}
+                  </span>
+                </div>
+                {attentionCount > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="h-3 w-3" />
+                    {attentionCount} lead{attentionCount !== 1 ? "s" : ""} need attention
+                  </div>
+                )}
+              </div>
+
+              {/* Three-column layout */}
+              <div className="grid grid-cols-3 divide-x divide-border">
+
+                {/* ── Performance ── */}
+                <div className="px-6 py-5">
+                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Performance</p>
+                  <div className="space-y-3.5">
+                    <MetricRow label="Conversion Rate" value={`${conversionRate}%`}      sub="leads that closed" />
+                    <MetricRow label="Avg Ticket Value" value={avgTicket > 0 ? formatCurrency(avgTicket) : "—"} sub="per lead with value" />
+                    <MetricRow label="Close Rate"       value={`${closeRate}%`}           sub="of decided leads" />
+                    <MetricRow
+                      label="Revenue Collected"
+                      value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"}
+                      sub="from completed leads"
+                      accent
+                    />
+                  </div>
+                </div>
+
+                {/* ── Stage Breakdown ── */}
+                <div className="px-6 py-5">
+                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Stage Breakdown</p>
+                  <div className="space-y-3">
+                    {stageData.map(stage => (
+                      <div key={stage.id} className="flex items-center gap-3">
+                        {/* Dot + label */}
+                        <div className="flex items-center gap-2 w-24 flex-shrink-0">
+                          <div className={cn("h-2 w-2 rounded-full flex-shrink-0", stage.dotColor)} />
+                          <span className="text-[12px] text-foreground/80 truncate">{stage.label}</span>
+                        </div>
+                        {/* Bar */}
+                        <div className="flex-1 h-2 rounded-full bg-secondary/60 overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-500", stage.dotColor, "opacity-70")}
+                            style={{ width: `${Math.round(stage.count / maxStageCount * 100)}%` }}
+                          />
+                        </div>
+                        {/* Count */}
+                        <span className="text-[12px] font-semibold text-foreground tabular-nums w-5 text-right flex-shrink-0">
+                          {stage.count}
+                        </span>
+                        {/* Value */}
+                        <span className="text-[11px] text-muted-foreground tabular-nums w-16 text-right flex-shrink-0">
+                          {stage.value > 0 ? formatCurrency(stage.value) : "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Needs Attention ── */}
+                <div className="px-6 py-5">
+                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Needs Attention</p>
+                  {attentionCount === 0 ? (
+                    <div className="flex items-center justify-center h-24">
+                      <p className="text-[12px] text-muted-foreground/40">All caught up</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {needsContact.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <MessageSquareDashed className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                            <span className="text-[11px] font-semibold text-muted-foreground">No contact in 7+ days</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {needsContact.map(l => <AttentionRow key={l.id} lead={l} />)}
+                          </div>
+                        </div>
+                      )}
+                      {unquoted.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileQuestion className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
+                            <span className="text-[11px] font-semibold text-muted-foreground">Contacted but unquoted</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {unquoted.map(l => <AttentionRow key={l.id} lead={l} />)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <AddLeadDialog open={showAddLead} onOpenChange={setShowAddLead} />
@@ -337,38 +360,31 @@ function StatCard({ label, value, icon: Icon, accent }: { label: string; value: 
   )
 }
 
-function InsightsSection({ label, children }: { label: string; children: React.ReactNode }) {
+function MetricRow({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
-    <div>
-      <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-3">{label}</p>
-      {children}
-    </div>
-  )
-}
-
-function MetricTile({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-2.5">
-      <p className="text-[10px] font-medium text-muted-foreground/70 truncate">{label}</p>
-      <p className={cn(
-        "text-[16px] font-bold tabular-nums mt-0.5 truncate",
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-[12px] text-muted-foreground truncate">{label}</p>
+        {sub && <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{sub}</p>}
+      </div>
+      <span className={cn(
+        "text-[15px] font-bold tabular-nums flex-shrink-0",
         accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
       )}>
         {value}
-      </p>
-      {sub && <p className="text-[10px] text-muted-foreground/50 mt-0.5 truncate">{sub}</p>}
+      </span>
     </div>
   )
 }
 
-function AttentionItem({ lead }: { lead: Pick<Lead, "id" | "name" | "status"> }) {
+function AttentionRow({ lead }: { lead: Pick<Lead, "id" | "name" | "status"> }) {
   return (
     <a
       href={`/leads?id=${lead.id}`}
-      className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 hover:bg-secondary/60 transition-colors group"
+      className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 -mx-2 hover:bg-secondary/60 transition-colors group"
     >
       <span className="text-[12px] font-medium text-foreground truncate group-hover:underline">{lead.name}</span>
-      <span className="text-[10px] text-muted-foreground/60 flex-shrink-0 capitalize">{lead.status}</span>
+      <span className="text-[10px] text-muted-foreground/60 capitalize flex-shrink-0">{lead.status}</span>
     </a>
   )
 }
