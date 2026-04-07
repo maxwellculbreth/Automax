@@ -442,6 +442,68 @@ export interface Database {
           updated_at?: string | null
         }
       }
+      scheduled_messages: {
+        Row: {
+          id: string
+          business_id: string
+          lead_id: string
+          automation_id: string | null
+          content: string
+          channel: "sms" | "email" | "phone" | "web_form" | "chat"
+          send_at: string
+          status: "pending" | "sent" | "failed" | "cancelled"
+          sent_at: string | null
+          twilio_sid: string | null
+          error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          lead_id: string
+          automation_id?: string | null
+          content: string
+          channel?: "sms" | "email" | "phone" | "web_form" | "chat"
+          send_at: string
+          status?: "pending" | "sent" | "failed" | "cancelled"
+          sent_at?: string | null
+          twilio_sid?: string | null
+          error?: string | null
+          created_at?: string
+        }
+        Update: {
+          status?: "pending" | "sent" | "failed" | "cancelled"
+          sent_at?: string | null
+          twilio_sid?: string | null
+          error?: string | null
+        }
+      }
+      automation_logs: {
+        Row: {
+          id: string
+          business_id: string
+          automation_id: string
+          lead_id: string | null
+          trigger_event: string
+          status: "triggered" | "executed" | "skipped" | "failed"
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          automation_id: string
+          lead_id?: string | null
+          trigger_event: string
+          status?: "triggered" | "executed" | "skipped" | "failed"
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          status?: "triggered" | "executed" | "skipped" | "failed"
+          metadata?: Json | null
+        }
+      }
       integrations: {
         Row: {
           id: string
@@ -540,6 +602,8 @@ export type Activity = Database["public"]["Tables"]["activities"]["Row"]
 export type Job = Database["public"]["Tables"]["jobs"]["Row"]
 export type AIGeneration = Database["public"]["Tables"]["ai_generations"]["Row"]
 export type Integration = Database["public"]["Tables"]["integrations"]["Row"]
+export type ScheduledMessage = Database["public"]["Tables"]["scheduled_messages"]["Row"]
+export type AutomationLog = Database["public"]["Tables"]["automation_logs"]["Row"]
 export type ExpenseCategory = Database["public"]["Tables"]["expense_categories"]["Row"]
 export type Expense = Database["public"]["Tables"]["expenses"]["Row"]
 
@@ -553,6 +617,8 @@ export type ActivityInsert = Database["public"]["Tables"]["activities"]["Insert"
 export type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"]
 export type AIGenerationInsert = Database["public"]["Tables"]["ai_generations"]["Insert"]
 export type IntegrationInsert = Database["public"]["Tables"]["integrations"]["Insert"]
+export type ScheduledMessageInsert = Database["public"]["Tables"]["scheduled_messages"]["Insert"]
+export type AutomationLogInsert = Database["public"]["Tables"]["automation_logs"]["Insert"]
 export type ExpenseCategoryInsert = Database["public"]["Tables"]["expense_categories"]["Insert"]
 export type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"]
 
@@ -566,5 +632,7 @@ export type ActivityUpdate = Database["public"]["Tables"]["activities"]["Update"
 export type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"]
 export type AIGenerationUpdate = Database["public"]["Tables"]["ai_generations"]["Update"]
 export type IntegrationUpdate = Database["public"]["Tables"]["integrations"]["Update"]
+export type ScheduledMessageUpdate = Database["public"]["Tables"]["scheduled_messages"]["Update"]
+export type AutomationLogUpdate = Database["public"]["Tables"]["automation_logs"]["Update"]
 export type ExpenseCategoryUpdate = Database["public"]["Tables"]["expense_categories"]["Update"]
 export type ExpenseUpdate = Database["public"]["Tables"]["expenses"]["Update"]

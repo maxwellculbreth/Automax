@@ -14,6 +14,9 @@ import {
   getMessages,
   createMessage,
   markMessagesRead,
+  getScheduledMessages,
+  createScheduledMessage,
+  cancelScheduledMessage,
   getAutomations,
   updateAutomation,
   getActivities,
@@ -32,6 +35,7 @@ import {
   createExpense,
   type Lead,
   type Message,
+  type ScheduledMessage,
   type Automation,
   type Activity,
   type Job,
@@ -45,7 +49,7 @@ import {
   type DateRangeKey,
   type ExpenseCategory,
 } from "@/lib/data-service"
-import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert } from "@/lib/database.types"
+import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert, ScheduledMessageInsert } from "@/lib/database.types"
 
 // ============================================================================
 // LEADS
@@ -188,6 +192,54 @@ export function useMarkMessagesRead() {
   return {
     markRead: trigger,
     isMarking: isMutating,
+  }
+}
+
+// ============================================================================
+// SCHEDULED MESSAGES
+// ============================================================================
+
+export function useScheduledMessages(leadId?: string) {
+  const key = leadId ? `scheduled-messages-${leadId}` : "scheduled-messages"
+  const { data, error, isLoading, mutate } = useSWR<ScheduledMessage[]>(
+    key,
+    () => getScheduledMessages(leadId),
+    { refreshInterval: 30000 }
+  )
+
+  return {
+    scheduledMessages: data ?? [],
+    isLoading,
+    isError: !!error,
+    mutate,
+  }
+}
+
+export function useCreateScheduledMessage() {
+  const { trigger, isMutating } = useSWRMutation(
+    "scheduled-messages",
+    async (_key: string, { arg }: { arg: Omit<ScheduledMessageInsert, "business_id"> }) => {
+      return await createScheduledMessage(arg)
+    }
+  )
+
+  return {
+    scheduleMessage: trigger,
+    isScheduling: isMutating,
+  }
+}
+
+export function useCancelScheduledMessage() {
+  const { trigger, isMutating } = useSWRMutation(
+    "scheduled-messages",
+    async (_key: string, { arg }: { arg: string }) => {
+      return await cancelScheduledMessage(arg)
+    }
+  )
+
+  return {
+    cancelMessage: trigger,
+    isCancelling: isMutating,
   }
 }
 

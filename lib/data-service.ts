@@ -12,10 +12,15 @@ import type {
   Business,
   Job,
   AIGeneration,
+  Integration,
+  ScheduledMessage,
+  AutomationLog,
   LeadInsert,
   LeadUpdate,
   MessageInsert,
   AutomationUpdate,
+  ScheduledMessageInsert,
+  AutomationLogInsert,
   LeadStatusDB,
   ExpenseCategory,
   Expense,
@@ -24,6 +29,8 @@ import type {
 
 // Re-export types for component usage
 export type { Lead, Message, Automation, Activity, User, Business, Job, AIGeneration }
+export type { Integration, ScheduledMessage, AutomationLog }
+export type { ScheduledMessageInsert, AutomationLogInsert }
 export type { LeadStatusDB as LeadStatus }
 export type { ExpenseCategory, Expense, ExpenseInsert }
 
@@ -1369,82 +1376,41 @@ export async function deleteLead(id: string): Promise<boolean> {
   return true
 }
 
-// ----- Messages (uses Supabase "converstaions" table - note the typo in the table name) -----
-
-// Type for Supabase converstaions table (table has a typo in name)
-interface SupabaseConversation {
-  id: string
-  lead_id: string
-  company_id: string
-  direction: "inbound" | "outbound"
-  channel: string
-  message_body: string
-  sent_at: string
-}
-
-// Map Supabase conversation to app Message type
-function mapSupabaseConversationToMessage(conv: SupabaseConversation): Message {
-  return {
-    id: conv.id,
-    lead_id: conv.lead_id,
-    business_id: conv.company_id,
-    content: conv.message_body || "",
-    sender_type: conv.direction === "inbound" ? "lead" : "business",
-    sender_id: null,
-    channel: (conv.channel as Message["channel"]) || "sms",
-    is_read: true,
-    created_at: conv.sent_at,
-  }
-}
+// ----- Messages (uses Supabase "messages" table — matches 001_create_schema.sql) -----
 
 export async function getMessages(leadId: string): Promise<Message[]> {
   const supabase = createClient()
-  const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    return []
-  }
-  
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return []
+
   const { data, error } = await supabase
-    .from("converstaions")
+    .from("messages")
     .select("*")
     .eq("lead_id", leadId)
-    .eq("company_id", companyId)
-    .order("sent_at", { ascending: true })
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: true })
 
   if (error) {
     console.error("Error fetching messages:", error)
     return []
   }
 
-  if (!data || data.length === 0) {
-    return []
-  }
-
-  return data.map((conv: SupabaseConversation) => mapSupabaseConversationToMessage(conv))
+  return data ?? []
 }
 
 export async function createMessage(message: MessageInsert): Promise<Message | null> {
   const supabase = createClient()
-  const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    console.error("Error creating message: No company_id found")
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) {
+    console.error("createMessage: no business_id found")
     return null
-  }
-  
-  const supabaseInsert = {
-    lead_id: message.lead_id,
-    company_id: companyId,
-    direction: message.sender_type === "lead" ? "inbound" : "outbound",
-    channel: message.channel || "app",
-    message_body: message.content || "",
-    sent_at: new Date().toISOString(),
   }
 
   const { data, error } = await supabase
-    .from("converstaions")
-    .insert(supabaseInsert)
+    .from("messages")
+    .insert({ ...message, business_id: businessId })
     .select()
     .single()
 
@@ -1453,13 +1419,99 @@ export async function createMessage(message: MessageInsert): Promise<Message | n
     return null
   }
 
-  return mapSupabaseConversationToMessage(data as SupabaseConversation)
+  return data as Message
 }
 
 export async function markMessagesRead(leadId: string): Promise<void> {
-  // Note: The conversations table doesn't have an is_read field
-  // This is kept for compatibility with the existing UI
-  mockMessages.filter((m) => m.lead_id === leadId).forEach((m) => (m.is_read = true))
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ is_read: true })
+    .eq("lead_id", leadId)
+    .eq("business_id", businessId)
+    .eq("is_read", false)
+
+  if (error) {
+    console.error("Error marking messages read:", error)
+  }
+}
+
+// ----- Scheduled Messages -----
+
+export async function getScheduledMessages(leadId?: string): Promise<ScheduledMessage[]> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return []
+
+  let query = supabase
+    .from("scheduled_messages")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("send_at", { ascending: true })
+
+  if (leadId) {
+    query = query.eq("lead_id", leadId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error("Error fetching scheduled messages:", error)
+    return []
+  }
+
+  return data ?? []
+}
+
+export async function createScheduledMessage(
+  msg: Omit<ScheduledMessageInsert, "business_id">
+): Promise<ScheduledMessage | null> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) {
+    console.error("createScheduledMessage: no business_id found")
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from("scheduled_messages")
+    .insert({ ...msg, business_id: businessId })
+    .select()
+    .single()
+
+  if (error) {
+    console.error("Error creating scheduled message:", error)
+    return null
+  }
+
+  return data as ScheduledMessage
+}
+
+export async function cancelScheduledMessage(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return false
+
+  const { error } = await supabase
+    .from("scheduled_messages")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("business_id", businessId)
+    .eq("status", "pending") // only cancel if still pending
+
+  if (error) {
+    console.error("Error cancelling scheduled message:", error)
+    return false
+  }
+
+  return true
 }
 
 // ----- Automations -----
