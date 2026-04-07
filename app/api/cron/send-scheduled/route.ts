@@ -1,37 +1,39 @@
 // GET /api/cron/send-scheduled
 //
-// Vercel Cron Job — runs every 5 minutes via vercel.json cron config.
+// Vercel Cron Job — runs daily via vercel.json (Hobby plan limit).
 // Reads all pending scheduled_messages where send_at <= NOW(),
-// sends each via Twilio, and updates the row status.
+// delivers each via sendSMS() (Twilio or mock), and updates the row status.
 //
-// Secured by CRON_SECRET env var. Vercel sets the Authorization header
-// automatically when invoking cron routes.
+// Auth:
+//   - If CRON_SECRET env var is set: requires Authorization: Bearer <secret>
+//   - If CRON_SECRET is not set (dev / preview): open — call it directly to test
 //
-// To enable: add to vercel.json:
-//   {
-//     "crons": [{ "path": "/api/cron/send-scheduled", "schedule": "*/5 * * * *" }]
-//   }
+// Uses service-role Supabase client to bypass RLS (no user session in cron context).
 
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
+import { sendSMS } from "@/lib/sms"
 
 export async function GET(req: NextRequest) {
-  // Verify this is called by Vercel Cron (or internally)
-  const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  // Enforce CRON_SECRET only when it is configured
+  const secret = process.env.CRON_SECRET
+  if (secret) {
+    const authHeader = req.headers.get("authorization")
+    if (authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
   }
 
-  const supabase = await createClient()
+  // Service-role client bypasses RLS — required for cron context (no user session)
+  const supabase = createServiceClient()
   const now = new Date().toISOString()
 
-  // Fetch all pending messages that are due
   const { data: pending, error: fetchError } = await supabase
     .from("scheduled_messages")
-    .select("*, leads(phone, name), businesses(name)")
+    .select("id, lead_id, company_id, content, leads(phone, name)")
     .eq("status", "pending")
     .lte("send_at", now)
-    .limit(50) // process max 50 per run to stay within timeout
+    .limit(50)
 
   if (fetchError) {
     console.error("Cron: failed to fetch scheduled messages:", fetchError)
@@ -46,6 +48,7 @@ export async function GET(req: NextRequest) {
 
   for (const msg of pending) {
     const lead = msg.leads as { phone: string; name: string } | null
+
     if (!lead?.phone) {
       await supabase
         .from("scheduled_messages")
@@ -55,70 +58,22 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    // Fetch Twilio credentials for this business
-    const { data: integration } = await supabase
-      .from("integrations")
-      .select("config, enabled")
-      .eq("business_id", msg.company_id)
-      .eq("type", "twilio")
-      .single()
-
-    if (!integration?.enabled || !integration.config) {
-      await supabase
-        .from("scheduled_messages")
-        .update({ status: "failed", error: "Twilio integration not configured" })
-        .eq("id", msg.id)
-      results.failed++
-      continue
-    }
-
-    const { account_sid, auth_token, from_number } = integration.config as {
-      account_sid: string
-      auth_token: string
-      from_number: string
-    }
-
-    // Send via Twilio
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${account_sid}/Messages.json`
-    const twilioBody = new URLSearchParams({
-      To: lead.phone,
-      From: from_number,
-      Body: msg.content,
-    })
-
     try {
-      const twilioRes = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          Authorization: "Basic " + Buffer.from(`${account_sid}:${auth_token}`).toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: twilioBody,
+      const { sid, mock } = await sendSMS(supabase, {
+        to: lead.phone,
+        body: msg.content,
+        businessId: msg.company_id,
       })
 
-      const twilioData = await twilioRes.json()
-
-      if (!twilioRes.ok) {
-        await supabase
-          .from("scheduled_messages")
-          .update({ status: "failed", error: twilioData.message ?? "Twilio error" })
-          .eq("id", msg.id)
-        results.failed++
-        results.errors.push(`msg ${msg.id}: ${twilioData.message}`)
-        continue
-      }
-
-      // Mark as sent
       await supabase
         .from("scheduled_messages")
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          twilio_sid: twilioData.sid,
+          twilio_sid: sid,
         })
         .eq("id", msg.id)
 
-      // Record the sent message in the messages table for the inbox
       await supabase.from("messages").insert({
         lead_id: msg.lead_id,
         company_id: msg.company_id,
@@ -129,6 +84,7 @@ export async function GET(req: NextRequest) {
         is_read: true,
       })
 
+      if (mock) console.log(`[cron] Mock-sent msg ${msg.id} to ${lead.phone}`)
       results.sent++
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error"
