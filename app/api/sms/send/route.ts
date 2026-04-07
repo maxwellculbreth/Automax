@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
       .from("messages")
       .insert({
         lead_id,
-        business_id,
+        company_id: business_id,
         content,
         sender_type: "business",
         sender_id,

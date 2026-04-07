@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       const { data: scheduledMsg, error: scheduleError } = await supabase
         .from("scheduled_messages")
         .insert({
-          business_id,
+          company_id: business_id,
           lead_id,
           automation_id: automation.id,
           content,

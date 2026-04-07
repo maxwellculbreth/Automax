@@ -312,7 +312,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_001",
     lead_id: "lead_001",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi, I need my driveway and back patio pressure washed before a graduation party next Saturday. Driveway is about 600 sq ft and patio is around 250 sq ft. Can you fit me in?",
     sender_type: "lead",
     sender_id: null,
@@ -324,7 +324,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_002",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Tom from Tom's BBQ recommended you guys. We have a tech office with a large parking area and building exterior that needs cleaning. Around 2,400 sq ft total. Looking for a quarterly contract.",
     sender_type: "lead",
     sender_id: null,
@@ -335,7 +335,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_003",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Robert! Thanks for reaching out - Tom's a great guy. I'd love to swing by tomorrow to take a look at the property and put together a detailed quote. Does 10am work?",
     sender_type: "business",
     sender_id: "user_001",
@@ -346,7 +346,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_004",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "10am works great. See you then.",
     sender_type: "lead",
     sender_id: null,
@@ -357,7 +357,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_005",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Robert, great meeting you today. Here's the quote as promised:\n\n• Initial deep clean: $1,450\n• Quarterly maintenance: $850/visit\n• Includes parking lot, sidewalks, building exterior\n\nLet me know if you have any questions!",
     sender_type: "business",
     sender_id: "user_001",
@@ -369,7 +369,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_006",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Saw your post on Nextdoor. Need full house soft wash - we have algae and mildew on the north side. 2,200 sq ft single story.",
     sender_type: "lead",
     sender_id: null,
@@ -380,7 +380,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_007",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Maria! Full house soft wash for a 2,200 sq ft home would be $475. That includes all siding, eaves, and a rinse of the walkways. I have Thursday or Friday open this week - which works better?",
     sender_type: "business",
     sender_id: "user_001",
@@ -391,7 +391,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_008",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Thursday morning would be perfect.",
     sender_type: "lead",
     sender_id: null,
@@ -402,7 +402,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_009",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "You're all set for Thursday at 8am. I'll text when we're on the way. Thanks Maria!",
     sender_type: "business",
     sender_id: "user_001",
@@ -414,7 +414,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_010",
     lead_id: "lead_004",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "I manage Crawfish Shack downtown. Our patio and sidewalk area needs cleaning urgently - health inspector coming Friday. Can you do tomorrow?",
     sender_type: "lead",
     sender_id: null,
@@ -425,7 +425,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_011",
     lead_id: "lead_004",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "James, I can absolutely help. I have a slot tomorrow at 6am before you open. For a restaurant patio and sidewalk, we're looking at around $875 including grease treatment. I'll bring the hot water unit. Can I get the address?",
     sender_type: "business",
     sender_id: "user_001",
@@ -437,7 +437,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_012",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Interested in getting my driveway and pool deck cleaned. Large circular driveway plus 400 sq ft pool deck.",
     sender_type: "lead",
     sender_id: null,
@@ -448,7 +448,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_013",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Linda! Thanks for reaching out. For a large circular driveway plus pool deck, I'd estimate around $550. Want me to come by for a quick look to give you an exact number?",
     sender_type: "business",
     sender_id: "user_001",
@@ -459,7 +459,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_014",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "That sounds reasonable. Let me check my schedule and get back to you.",
     sender_type: "lead",
     sender_id: null,
@@ -471,7 +471,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_015",
     lead_id: "lead_006",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "I manage 6 rental properties in South Austin. Looking for a reliable pressure washing company to handle all of them on a rotating schedule. Each property needs service every 6 months.",
     sender_type: "lead",
     sender_id: null,
@@ -482,7 +482,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_016",
     lead_id: "lead_006",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Kevin, this sounds like a great fit. I'd love to put together a package deal for all 6 properties. Can we meet tomorrow to discuss the scope? I can swing by your office or meet at one of the properties.",
     sender_type: "business",
     sender_id: "user_001",
@@ -494,7 +494,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_017",
     lead_id: "lead_007",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Job complete! Your driveway looks brand new. Thanks for choosing Crystal Clear - here's a before/after photo. Would really appreciate a review if you have a moment: [review link]",
     sender_type: "business",
     sender_id: "user_002",
@@ -506,7 +506,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_018",
     lead_id: "lead_008",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hey! You did our driveway last spring and it still looks great. Now we need the back fence and deck done before summer. Same deal?",
     sender_type: "lead",
     sender_id: null,
@@ -518,7 +518,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_019",
     lead_id: "lead_009",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Board member recommended you for our HOA. We need the community pool area, 4 pavilions, and main entrance sidewalks cleaned quarterly.",
     sender_type: "lead",
     sender_id: null,
@@ -529,7 +529,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_020",
     lead_id: "lead_009",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Tom, I walked the property yesterday and put together a comprehensive quote:\n\n• Pool deck & surrounding area: $1,200\n• 4 Pavilions: $800 ($200 each)\n• Main entrance & sidewalks: $1,200\n• Total: $3,200 per service\n• Quarterly rate: $2,900/visit (10% discount)\n\nThis includes full cleanup and all chemicals. Board approval needed?",
     sender_type: "business",
     sender_id: "user_001",
@@ -541,7 +541,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_021",
     lead_id: "lead_010",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Thanks for the quote but we went with someone else. Your price was a bit higher than what we were looking for.",
     sender_type: "lead",
     sender_id: null,
@@ -1388,7 +1388,7 @@ export async function getMessages(leadId: string): Promise<Message[]> {
     .from("messages")
     .select("*")
     .eq("lead_id", leadId)
-    .eq("business_id", businessId)
+    .eq("company_id", businessId)
     .order("created_at", { ascending: true })
 
   if (error) {
@@ -1410,7 +1410,7 @@ export async function createMessage(message: MessageInsert): Promise<Message | n
 
   const { data, error } = await supabase
     .from("messages")
-    .insert({ ...message, business_id: businessId })
+    .insert({ ...message, company_id: businessId })
     .select()
     .single()
 
@@ -1432,7 +1432,7 @@ export async function markMessagesRead(leadId: string): Promise<void> {
     .from("messages")
     .update({ is_read: true })
     .eq("lead_id", leadId)
-    .eq("business_id", businessId)
+    .eq("company_id", businessId)
     .eq("is_read", false)
 
   if (error) {
@@ -1451,7 +1451,7 @@ export async function getScheduledMessages(leadId?: string): Promise<ScheduledMe
   let query = supabase
     .from("scheduled_messages")
     .select("*")
-    .eq("business_id", businessId)
+    .eq("company_id", businessId)
     .order("send_at", { ascending: true })
 
   if (leadId) {
@@ -1469,19 +1469,19 @@ export async function getScheduledMessages(leadId?: string): Promise<ScheduledMe
 }
 
 export async function createScheduledMessage(
-  msg: Omit<ScheduledMessageInsert, "business_id">
+  msg: Omit<ScheduledMessageInsert, "company_id">
 ): Promise<ScheduledMessage | null> {
   const supabase = createClient()
   const businessId = await getCurrentUserCompanyId()
 
   if (!businessId) {
-    console.error("createScheduledMessage: no business_id found")
+    console.error("createScheduledMessage: no company_id found")
     return null
   }
 
   const { data, error } = await supabase
     .from("scheduled_messages")
-    .insert({ ...msg, business_id: businessId })
+    .insert({ ...msg, company_id: businessId })
     .select()
     .single()
 
@@ -1503,7 +1503,7 @@ export async function cancelScheduledMessage(id: string): Promise<boolean> {
     .from("scheduled_messages")
     .update({ status: "cancelled" })
     .eq("id", id)
-    .eq("business_id", businessId)
+    .eq("company_id", businessId)
     .eq("status", "pending") // only cancel if still pending
 
   if (error) {

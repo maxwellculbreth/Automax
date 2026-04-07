@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     // Store the inbound message
     const { error } = await supabase.from("messages").insert({
       lead_id: matchedLead.id,
-      business_id: businessId,
+      company_id: businessId,
       content: body,
       sender_type: "lead",
       sender_id: null,

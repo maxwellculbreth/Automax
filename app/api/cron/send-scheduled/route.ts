@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     const { data: integration } = await supabase
       .from("integrations")
       .select("config, enabled")
-      .eq("business_id", msg.business_id)
+      .eq("business_id", msg.company_id)
       .eq("type", "twilio")
       .single()
 
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
       // Record the sent message in the messages table for the inbox
       await supabase.from("messages").insert({
         lead_id: msg.lead_id,
-        business_id: msg.business_id,
+        company_id: msg.company_id,
         content: msg.content,
         sender_type: "ai",
         sender_id: null,

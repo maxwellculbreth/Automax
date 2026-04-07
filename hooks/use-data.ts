@@ -218,7 +218,7 @@ export function useScheduledMessages(leadId?: string) {
 export function useCreateScheduledMessage() {
   const { trigger, isMutating } = useSWRMutation(
     "scheduled-messages",
-    async (_key: string, { arg }: { arg: Omit<ScheduledMessageInsert, "business_id"> }) => {
+    async (_key: string, { arg }: { arg: Omit<ScheduledMessageInsert, "company_id"> }) => {
       return await createScheduledMessage(arg)
     }
   )

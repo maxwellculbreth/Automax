@@ -172,7 +172,7 @@ export interface Database {
         Row: {
           id: string
           lead_id: string
-          business_id: string
+          company_id: string
           content: string
           sender_type: "lead" | "business" | "ai"
           sender_id: string | null
@@ -183,7 +183,7 @@ export interface Database {
         Insert: {
           id?: string
           lead_id: string
-          business_id: string
+          company_id: string
           content: string
           sender_type: "lead" | "business" | "ai"
           sender_id?: string | null
@@ -194,7 +194,7 @@ export interface Database {
         Update: {
           id?: string
           lead_id?: string
-          business_id?: string
+          company_id?: string
           content?: string
           sender_type?: "lead" | "business" | "ai"
           sender_id?: string | null
@@ -445,7 +445,7 @@ export interface Database {
       scheduled_messages: {
         Row: {
           id: string
-          business_id: string
+          company_id: string
           lead_id: string
           automation_id: string | null
           content: string
@@ -459,7 +459,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          business_id: string
+          company_id: string
           lead_id: string
           automation_id?: string | null
           content: string

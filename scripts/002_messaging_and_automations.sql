@@ -13,7 +13,7 @@
 
 CREATE TABLE scheduled_messages (
   id                UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  business_id       UUID        NOT NULL REFERENCES businesses(id)   ON DELETE CASCADE,
+  company_id        UUID        NOT NULL REFERENCES businesses(id)   ON DELETE CASCADE,
   lead_id           UUID        NOT NULL REFERENCES leads(id)         ON DELETE CASCADE,
   automation_id     UUID                 REFERENCES automations(id)  ON DELETE SET NULL,
 
@@ -42,13 +42,13 @@ CREATE INDEX idx_scheduled_messages_send_at      ON scheduled_messages(send_at)
 ALTER TABLE scheduled_messages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Team can view scheduled_messages" ON scheduled_messages
-  FOR SELECT USING (business_id = get_user_business_id());
+  FOR SELECT USING (company_id = get_user_business_id());
 
 CREATE POLICY "Team can insert scheduled_messages" ON scheduled_messages
-  FOR INSERT WITH CHECK (business_id = get_user_business_id());
+  FOR INSERT WITH CHECK (company_id = get_user_business_id());
 
 CREATE POLICY "Team can update scheduled_messages" ON scheduled_messages
-  FOR UPDATE USING (business_id = get_user_business_id());
+  FOR UPDATE USING (company_id = get_user_business_id());
 
 -- ============================================================================
 -- automation_logs
