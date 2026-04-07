@@ -3,13 +3,14 @@
 
 "use client"
 
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import useSWRMutation from "swr/mutation"
 import {
   getLeads,
   getLead,
   createLead,
   updateLead,
+  deleteLead,
   getMessages,
   createMessage,
   markMessagesRead,
@@ -27,6 +28,8 @@ import {
   getAIGenerations,
   getCurrentCompany,
   getFinanceData,
+  getExpenseCategories,
+  createExpense,
   type Lead,
   type Message,
   type Automation,
@@ -39,8 +42,10 @@ import {
   type AIGeneration,
   type Company,
   type FinanceData,
+  type DateRangeKey,
+  type ExpenseCategory,
 } from "@/lib/data-service"
-import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate } from "@/lib/database.types"
+import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert } from "@/lib/database.types"
 
 // ============================================================================
 // LEADS
@@ -94,9 +99,14 @@ export function useUpdateLead() {
     "leads",
     async (_key: string, { arg }: { arg: { id: string; updates: LeadUpdate & { completed_at?: string } } }) => {
       const result = await updateLead(arg.id, arg.updates)
-      // Revalidate leads list after successful update
       if (result) {
-        mutateLeads()
+        // Patch the cache immediately so the list badge updates without waiting
+        // for a full re-fetch. revalidate:true runs a background refresh to confirm.
+        mutateLeads(
+          (current: Lead[] | undefined) =>
+            current?.map((l) => (l.id === result.id ? result : l)) ?? [],
+          { revalidate: true }
+        )
       }
       return result
     }
@@ -105,6 +115,30 @@ export function useUpdateLead() {
   return {
     updateLead: trigger,
     isUpdating: isMutating,
+  }
+}
+
+export function useDeleteLead() {
+  const { mutate: mutateLeads } = useSWR<Lead[]>("leads")
+
+  const { trigger, isMutating } = useSWRMutation(
+    "leads",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteLead(arg)
+      if (success) {
+        // Remove the lead from the cache immediately
+        mutateLeads(
+          (current: Lead[] | undefined) => current?.filter((l) => l.id !== arg) ?? [],
+          { revalidate: false }
+        )
+      }
+      return success
+    }
+  )
+
+  return {
+    deleteLead: trigger,
+    isDeleting: isMutating,
   }
 }
 
@@ -298,12 +332,12 @@ export function useCurrentUser() {
 // DASHBOARD
 // ============================================================================
 
-export function useDashboardKPIs() {
+export function useDashboardKPIs(range: DateRangeKey = "week") {
   const { data, error, isLoading, mutate } = useSWR<DashboardKPIs>(
-    "dashboard-kpis",
-    getDashboardKPIs,
+    `dashboard-kpis-${range}`,
+    () => getDashboardKPIs(range),
     {
-      refreshInterval: 60000, // Refresh every minute
+      refreshInterval: 60000,
     }
   )
 
@@ -375,10 +409,10 @@ export function useCompany() {
 // FINANCE
 // ============================================================================
 
-export function useFinanceData() {
+export function useFinanceData(range = "this-month") {
   const { data, error, isLoading, mutate } = useSWR<FinanceData | null>(
-    "finance-data",
-    getFinanceData,
+    `finance-data-${range}`,
+    () => getFinanceData(range),
     {
       refreshInterval: 60000, // Refresh every minute
     }
@@ -389,5 +423,41 @@ export function useFinanceData() {
     isLoading,
     isError: !!error,
     mutate,
+  }
+}
+
+export function useExpenseCategories() {
+  const { data, error, isLoading } = useSWR<ExpenseCategory[]>(
+    "expense-categories",
+    getExpenseCategories,
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    categories: data ?? [],
+    isLoading,
+    isError: !!error,
+  }
+}
+
+export function useCreateExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "create-expense",
+    async (_key: string, { arg }: { arg: ExpenseInsert }) => {
+      const success = await createExpense(arg)
+      if (success) {
+        // Invalidate all finance-data range keys so the Finance page re-fetches
+        const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
+        await Promise.all(
+          ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true }))
+        )
+      }
+      return success
+    }
+  )
+
+  return {
+    createExpense: trigger,
+    isCreating: isMutating,
   }
 }

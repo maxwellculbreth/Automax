@@ -1,10 +1,23 @@
 "use client"
 
 import { useDashboardKPIs } from "@/hooks/use-data"
+import { type DateRangeKey } from "@/lib/data-service"
 import { Clock, TrendingUp, RefreshCw, Target, Loader2 } from "lucide-react"
 
-export function PerformanceMetrics() {
-  const { kpis, isLoading } = useDashboardKPIs()
+const growthLabelMap: Record<DateRangeKey, { label: string; description: string }> = {
+  week: { label: "Weekly Growth", description: "Revenue vs. last week" },
+  month: { label: "Monthly Growth", description: "Revenue vs. last month" },
+  quarter: { label: "Quarterly Growth", description: "Revenue vs. last quarter" },
+  year: { label: "Annual Growth", description: "Revenue vs. last year" },
+}
+
+interface PerformanceMetricsProps {
+  range?: DateRangeKey
+}
+
+export function PerformanceMetrics({ range = "week" }: PerformanceMetricsProps) {
+  const { kpis, isLoading } = useDashboardKPIs(range)
+  const growth = growthLabelMap[range]
 
   const metrics = [
     {
@@ -32,12 +45,12 @@ export function PerformanceMetrics() {
       description: "Customers who return",
     },
     {
-      label: "Weekly Growth",
-      value: "+18%",
+      label: growth.label,
+      value: kpis ? (kpis.weeklyGrowth >= 0 ? `+${kpis.weeklyGrowth}%` : `${kpis.weeklyGrowth}%`) : "-",
       target: "10%",
       status: "good",
       icon: TrendingUp,
-      description: "Revenue vs. last week",
+      description: growth.description,
     },
   ]
 

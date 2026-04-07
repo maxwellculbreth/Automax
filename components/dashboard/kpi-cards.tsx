@@ -1,59 +1,71 @@
 "use client"
 
 import { useDashboardKPIs } from "@/hooks/use-data"
-import { formatCurrency } from "@/lib/data-service"
+import { formatCurrency, dateRangeLabels, type DateRangeKey } from "@/lib/data-service"
 import { TrendingUp, TrendingDown, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const kpiConfig = [
-  {
-    key: "newLeadsToday",
-    label: "New Leads",
-    suffix: " today",
-    getTrend: (val: number) => val > 0 ? "New opportunities" : "No new leads yet",
-    getTrendUp: (val: number) => val > 0 ? true : null,
-  },
-  {
-    key: "leadsAwaitingResponse",
-    label: "Awaiting Response",
-    suffix: "",
-    getTrend: (val: number) => val > 0 ? `${val} need attention` : "All caught up",
-    getTrendUp: (val: number) => val > 0 ? false : true,
-    alert: true,
-  },
-  {
-    key: "quotesOutstanding",
-    label: "Quotes Out",
-    suffix: "",
-    getTrend: (val: number) => val > 0 ? `${val} pending decisions` : "No pending quotes",
-    getTrendUp: () => null,
-  },
-  {
-    key: "bookedThisWeek",
-    label: "Booked Jobs",
-    suffix: " this week",
-    getTrend: (val: number) => val > 0 ? "Great progress" : "Keep following up",
-    getTrendUp: (val: number) => val > 0 ? true : null,
-  },
-  {
-    key: "weeklyRevenue",
-    label: "Weekly Revenue",
-    suffix: "",
-    isCurrency: true,
-    getTrend: (val: number) => val > 0 ? "From booked jobs" : "No bookings yet",
-    getTrendUp: (val: number) => val > 0 ? true : null,
-  },
-  {
-    key: "conversionRate",
-    label: "Close Rate",
-    suffix: "%",
-    getTrend: (val: number) => val >= 50 ? "Above target" : val > 0 ? "Room to improve" : "No data yet",
-    getTrendUp: (val: number) => val >= 50 ? true : val > 0 ? false : null,
-  },
-] as const
+const revenueLabelMap: Record<DateRangeKey, string> = {
+  week: "Weekly Revenue",
+  month: "Monthly Revenue",
+  quarter: "Quarterly Revenue",
+  year: "Annual Revenue",
+}
 
-export function DashboardKPIs() {
-  const { kpis, isLoading } = useDashboardKPIs()
+interface DashboardKPIsProps {
+  range?: DateRangeKey
+}
+
+export function DashboardKPIs({ range = "week" }: DashboardKPIsProps) {
+  const { kpis, isLoading } = useDashboardKPIs(range)
+  const rangeLabel = dateRangeLabels[range]
+
+  const kpiConfig = [
+    {
+      key: "newLeadsToday",
+      label: "New Leads",
+      suffix: " today",
+      getTrend: (val: number) => val > 0 ? "New opportunities" : "No new leads yet",
+      getTrendUp: (val: number) => val > 0 ? true : null,
+    },
+    {
+      key: "leadsAwaitingResponse",
+      label: "Awaiting Response",
+      suffix: "",
+      getTrend: (val: number) => val > 0 ? `${val} need attention` : "All caught up",
+      getTrendUp: (val: number) => val > 0 ? false : true,
+      alert: true,
+    },
+    {
+      key: "quotesOutstanding",
+      label: "Quotes Out",
+      suffix: "",
+      getTrend: (val: number) => val > 0 ? `${val} pending decisions` : "No pending quotes",
+      getTrendUp: () => null,
+    },
+    {
+      key: "bookedThisWeek",
+      label: "Booked Jobs",
+      suffix: ` ${rangeLabel}`,
+      getTrend: (val: number) => val > 0 ? "Great progress" : "Keep following up",
+      getTrendUp: (val: number) => val > 0 ? true : null,
+    },
+    {
+      key: "weeklyRevenue",
+      label: revenueLabelMap[range],
+      suffix: "",
+      isCurrency: true,
+      getTrend: (val: number) => val > 0 ? "From booked jobs" : "No bookings yet",
+      getTrendUp: (val: number) => val > 0 ? true : null,
+    },
+    {
+      key: "conversionRate",
+      label: "Close Rate",
+      suffix: "%",
+      getTrend: (val: number) => val >= 50 ? "Above target" : val > 0 ? "Room to improve" : "No data yet",
+      getTrendUp: (val: number) => val >= 50 ? true : val > 0 ? false : null,
+    },
+  ]
 
   if (isLoading || !kpis) {
     return (

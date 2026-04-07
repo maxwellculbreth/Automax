@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -11,10 +12,13 @@ import {
   Settings,
   ChevronLeft,
   Menu,
-  Droplets,
   Megaphone,
   LogOut,
   DollarSign,
+  Sparkles,
+  TrendingUp,
+  Star,
+  FileText,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -22,14 +26,18 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
-const navigation = [
+const navigation: { name: string; href: string; icon: React.ElementType; badge?: number; pro?: boolean; max?: boolean }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
+  { name: "Quotes", href: "/quotes", icon: FileText },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
+  { name: "Reviews",   href: "/reviews",   icon: Star,     pro: true },
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
+  { name: "Autome", href: "/autome", icon: Sparkles, max: true },
+  { name: "Projection", href: "/projection", icon: TrendingUp, max: true },
 ]
 
 export function AppSidebar() {
@@ -57,11 +65,16 @@ export function AppSidebar() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2 ml-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
-            <Droplets className="h-3.5 w-3.5 text-background" />
+        <div className="flex items-center gap-2.5 ml-3">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-blue-600 to-indigo-700">
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </div>
-          <span className="text-[14px] font-semibold text-foreground">Automa</span>
+          <span className="text-[14px] tracking-tight select-none">
+            <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
+          </span>
         </div>
       </div>
 
@@ -89,19 +102,22 @@ export function AppSidebar() {
               collapsed ? "justify-center px-2" : "justify-between px-4"
             )}
           >
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               className={cn(
                 "flex items-center gap-2.5",
                 collapsed && "justify-center"
               )}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-                <Droplets className="h-4 w-4 text-background" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-blue-600 to-indigo-700">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </div>
               {!collapsed && (
-                <span className="text-[15px] font-semibold tracking-tight text-foreground">
-                  Automa
+                <span className="text-[15px] tracking-tight select-none">
+                  <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
                 </span>
               )}
             </Link>
@@ -137,6 +153,11 @@ export function AppSidebar() {
                         {item.pro && (
                           <span className="flex items-center rounded bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[9px] font-semibold text-white uppercase tracking-wide">
                             Pro
+                          </span>
+                        )}
+                        {item.max && (
+                          <span className="flex items-center rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-widest shadow-sm">
+                            Max
                           </span>
                         )}
                       </>

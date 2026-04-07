@@ -1,28 +1,120 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Check, ArrowRight } from 'lucide-react'
+
+// ─── Branding panel (desktop left column) ────────────────────────────────────
+
+const FEATURES = [
+  "Respond to leads faster",
+  "Turn jobs into 5-star reviews",
+  "Stay organized with a simple pipeline",
+]
+
+function BrandingPanel() {
+  return (
+    <div className="relative hidden lg:flex flex-col overflow-hidden bg-[#080f1e] px-10 py-12 xl:px-14">
+      {/* Top accent line */}
+      <div className="pointer-events-none absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
+      {/* Glows */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-[480px] w-[480px] rounded-full bg-blue-600/25 blur-[130px]" />
+      <div className="pointer-events-none absolute top-1/2 left-1/4 h-56 w-56 rounded-full bg-blue-500/10 blur-[70px]" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-indigo-700/20 blur-[90px]" />
+      {/* Dot grid texture */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.045]"
+        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+      />
+
+      {/* Wordmark */}
+      <div className="relative z-10 flex items-center gap-2.5">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-blue-600 to-indigo-700">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <span className="select-none text-[15px] tracking-tight">
+          <span className="font-semibold text-white">Auto</span>
+          <span className="font-medium text-white/40">max</span>
+        </span>
+      </div>
+
+      {/* Hero copy — pushed to bottom half */}
+      <div className="relative z-10 mt-auto">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-400/70">
+          Built for service businesses
+        </p>
+        <h2 className="text-[33px] font-bold leading-[1.14] tracking-tight text-white xl:text-[37px]">
+          Run your business.<br />
+          We&apos;ll handle the rest.
+        </h2>
+        <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-white/50">
+          Automax helps you manage leads, follow up automatically, and grow your business — all in one place.
+        </p>
+
+        <ul className="mt-8 space-y-3.5">
+          {FEATURES.map(f => (
+            <li key={f} className="flex items-center gap-3">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-blue-600/20 ring-1 ring-blue-500/30">
+                <Check className="h-3 w-3 text-blue-400" />
+              </span>
+              <span className="text-[14px] text-white/70">{f}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="relative z-10 mt-10 text-[11px] text-white/25">
+        Used by growing service businesses
+      </p>
+    </div>
+  )
+}
+
+// ─── Mobile branding strip ────────────────────────────────────────────────────
+
+function MobileHeader() {
+  return (
+    <div className="lg:hidden bg-[#080f1e] px-6 py-7 sm:px-8">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[6px] bg-gradient-to-br from-blue-600 to-indigo-700">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <span className="select-none text-[14px] tracking-tight">
+          <span className="font-semibold text-white">Auto</span>
+          <span className="font-medium text-white/40">max</span>
+        </span>
+      </div>
+      <p className="text-[18px] font-bold leading-snug text-white">
+        Run your business.<br />
+        We&apos;ll handle the rest.
+      </p>
+      <p className="mt-1.5 text-[13px] text-white/50">
+        Manage leads, follow up automatically, and grow.
+      </p>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [email,     setEmail]     = useState('')
+  const [password,  setPassword]  = useState('')
+  const [error,     setError]     = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  // Auth logic — unchanged
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
@@ -30,10 +122,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       router.push('/dashboard')
     } catch (error: unknown) {
@@ -44,85 +133,103 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 p-6 md:p-10">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col gap-8">
-          {/* Branding */}
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Automa</h1>
-            <p className="text-sm font-medium text-slate-500">Automation for Service Businesses</p>
-          </div>
-          
-          {/* Auth Card */}
-          <Card className="shadow-lg shadow-slate-200/50 border-slate-200/80 rounded-2xl">
-            <CardHeader className="space-y-1.5 px-8 pt-8 pb-2">
-              <CardTitle className="text-2xl font-semibold text-slate-900">Welcome back</CardTitle>
-              <CardDescription className="text-slate-500">
-                Enter your credentials to access your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-8 pb-8 pt-4">
-              <form onSubmit={handleLogin}>
-                <div className="flex flex-col gap-5">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-11 px-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 focus:ring-4 transition-all"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 px-4 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 focus:ring-4 transition-all"
-                    />
-                  </div>
-                  {error && (
-                    <p className="text-sm text-red-600 dark:text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>
-                  )}
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors mt-2" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign in'
-                    )}
-                  </Button>
+    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[500px_1fr] xl:grid-cols-[560px_1fr]">
+
+      {/* Left — desktop branding panel */}
+      <BrandingPanel />
+
+      {/* Right — form column */}
+      <div className="flex flex-col">
+
+        {/* Mobile branding strip */}
+        <MobileHeader />
+
+        {/* Form — vertically centered in remaining space */}
+        <div className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8 sm:py-14">
+          <div className="w-full max-w-[400px]">
+
+            {/* Card */}
+            <div className="rounded-2xl border border-border/60 bg-card px-7 py-8 shadow-sm">
+
+              {/* Header */}
+              <div className="mb-7">
+                <h1 className="text-[28px] font-bold tracking-tight text-foreground">
+                  Welcome back
+                </h1>
+                <p className="mt-1.5 text-[14px] text-muted-foreground">
+                  Log in to your Automax account
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleLogin} className="space-y-5">
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[13px] font-medium">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="h-10 text-[13px]"
+                  />
                 </div>
-                <div className="mt-6 text-center text-sm text-slate-500">
-                  Don&apos;t have an account?{' '}
-                  <Link
-                    href="/auth/sign-up"
-                    className="text-blue-600 hover:text-blue-700 font-medium hover:underline underline-offset-4 transition-colors"
-                  >
-                    Create account
-                  </Link>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-[13px] font-medium">Password</Label>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="h-10 text-[13px]"
+                  />
                 </div>
+
+                {error && (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3.5 py-2.5">
+                    <p className="text-[13px] text-red-600 dark:text-red-400">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-[11px] text-[14px] font-semibold text-white transition-all hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/20 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isLoading
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
+                    : <>Log in <ArrowRight className="h-4 w-4" /></>
+                  }
+                </button>
+
               </form>
-            </CardContent>
-          </Card>
-          
-          {/* Tagline */}
-          <p className="text-center text-sm text-slate-400">
-            Turn leads into booked jobs — automatically
-          </p>
+
+              {/* Footer link */}
+              <p className="mt-6 text-center text-[13px] text-muted-foreground">
+                Don&apos;t have an account?{' '}
+                <Link href="/auth/sign-up" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                  Create account
+                </Link>
+              </p>
+
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   )

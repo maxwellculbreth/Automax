@@ -17,11 +17,15 @@ import type {
   MessageInsert,
   AutomationUpdate,
   LeadStatusDB,
+  ExpenseCategory,
+  Expense,
+  ExpenseInsert,
 } from "./database.types"
 
 // Re-export types for component usage
 export type { Lead, Message, Automation, Activity, User, Business, Job, AIGeneration }
 export type { LeadStatusDB as LeadStatus }
+export type { ExpenseCategory, Expense, ExpenseInsert }
 
 // ============================================================================
 // MOCK DATA - Replace with Supabase queries when ready
@@ -828,7 +832,7 @@ export async function getCurrentUser(): Promise<User> {
 // ----- Leads -----
 
 // Type for Supabase leads table (matches actual schema)
-// Schema: id, company_id, customer_name, phone, email, service_type, address, message, source, status, quote_amount, completed_at, created_at, updated_at
+// Schema: id, company_id, customer_name, phone, email, service_type, address, message, source, status, quote_amount, completed_at, next_follow_up_at, created_at, updated_at
 interface SupabaseLead {
   id: string
   company_id: string
@@ -842,6 +846,9 @@ interface SupabaseLead {
   status: LeadStatusDB
   quote_amount: number | null
   completed_at: string | null
+  lost_at: string | null
+  next_follow_up_at: string | null
+  scheduled_at: string | null
   created_at: string
   updated_at: string
 }
@@ -864,7 +871,10 @@ function mapSupabaseLeadToLead(supabaseLead: SupabaseLead): Lead {
     notes: supabaseLead.message,
     assigned_to: null, // Column doesn't exist in schema
     last_contact_at: null, // Column doesn't exist in schema
-    next_follow_up_at: null, // Column doesn't exist in schema
+    next_follow_up_at: supabaseLead.next_follow_up_at ?? null,
+    scheduled_at: supabaseLead.scheduled_at ?? null,
+    completed_at: supabaseLead.completed_at,
+    lost_at: supabaseLead.lost_at ?? null,
     created_at: supabaseLead.created_at,
     updated_at: supabaseLead.updated_at,
   }
@@ -1219,17 +1229,23 @@ export async function createLead(lead: LeadInsert): Promise<Lead | null> {
 // IMPORTANT: Always use canonical status values ("scheduled", "completed") - never "booked" or "complete"
 function mapLeadUpdateToSupabase(updates: LeadUpdate & { completed_at?: string }): Record<string, unknown> {
   const supabaseUpdates: Record<string, unknown> = {}
-  
-  // Normalize status to canonical value before saving
-  if (updates.status !== undefined) {
-    supabaseUpdates.status = normalizeStatus(updates.status)
-  }
+
+  if (updates.name !== undefined) supabaseUpdates.customer_name = updates.name
+  if (updates.phone !== undefined) supabaseUpdates.phone = updates.phone
+  if (updates.email !== undefined) supabaseUpdates.email = updates.email
+  if (updates.address !== undefined) supabaseUpdates.address = updates.address
+  if (updates.service !== undefined) supabaseUpdates.service_type = updates.service
+  if (updates.source !== undefined) supabaseUpdates.source = updates.source
+  if (updates.status !== undefined) supabaseUpdates.status = normalizeStatus(updates.status)
   if (updates.estimated_value !== undefined) supabaseUpdates.quote_amount = updates.estimated_value
   if (updates.notes !== undefined) supabaseUpdates.message = updates.notes
+  if (updates.next_follow_up_at !== undefined) supabaseUpdates.next_follow_up_at = updates.next_follow_up_at
+  if (updates.scheduled_at !== undefined) supabaseUpdates.scheduled_at = updates.scheduled_at
   if (updates.completed_at !== undefined) supabaseUpdates.completed_at = updates.completed_at
-  
+  if (updates.lost_at !== undefined) supabaseUpdates.lost_at = updates.lost_at
+
   supabaseUpdates.updated_at = new Date().toISOString()
-  
+
   return supabaseUpdates
 }
 
@@ -1333,6 +1349,24 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
   }
 
   return mapSupabaseLeadToLead(updatedLead)
+}
+
+export async function deleteLead(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+
+  const { error } = await supabase
+    .from("leads")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+
+  if (error) {
+    console.error("Error deleting lead:", error)
+    return false
+  }
+  return true
 }
 
 // ----- Messages (uses Supabase "converstaions" table - note the typo in the table name) -----
@@ -1620,6 +1654,121 @@ export async function getAIGenerations(limit = 10): Promise<AIGeneration[]> {
   return mockAIGenerations.slice(0, limit)
 }
 
+// ----- Dashboard date range -----
+export type DateRangeKey = "week" | "month" | "quarter" | "year"
+
+export const dateRangeLabels: Record<DateRangeKey, string> = {
+  week: "this week",
+  month: "this month",
+  quarter: "this quarter",
+  year: "this year",
+}
+
+export const dateRangeButtonLabels: Record<DateRangeKey, string> = {
+  week: "This Week",
+  month: "This Month",
+  quarter: "This Quarter",
+  year: "This Year",
+}
+
+// Returns the start of the current calendar period for the given range key.
+export function getDateRangeStart(range: DateRangeKey): Date {
+  const now = new Date()
+  switch (range) {
+    case "week": {
+      const day = now.getDay()
+      const daysFromMonday = day === 0 ? 6 : day - 1
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday)
+    }
+    case "month":
+      return new Date(now.getFullYear(), now.getMonth(), 1)
+    case "quarter": {
+      const qMonth = Math.floor(now.getMonth() / 3) * 3
+      return new Date(now.getFullYear(), qMonth, 1)
+    }
+    case "year":
+      return new Date(now.getFullYear(), 0, 1)
+  }
+}
+
+// Finance page uses its own range strings ("this-week", "this-month", "last-30",
+// "this-quarter", "ytd"). Returns inclusive start and exclusive end as Date objects.
+export function getFinanceDateBounds(range: string): { start: Date; end: Date } {
+  const now = new Date()
+  switch (range) {
+    case "this-week": {
+      const day = now.getDay()
+      const daysFromMonday = day === 0 ? 6 : day - 1
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      return { start, end }
+    }
+    case "this-month":
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+      }
+    case "last-30": {
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      const start = new Date(end)
+      start.setDate(start.getDate() - 30)
+      return { start, end }
+    }
+    case "this-quarter": {
+      const qMonth = Math.floor(now.getMonth() / 3) * 3
+      return {
+        start: new Date(now.getFullYear(), qMonth, 1),
+        end: new Date(now.getFullYear(), qMonth + 3, 1),
+      }
+    }
+    case "ytd":
+      return {
+        start: new Date(now.getFullYear(), 0, 1),
+        end: new Date(now.getFullYear() + 1, 0, 1),
+      }
+    default:
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+      }
+  }
+}
+
+function getPrevRangeStart(range: DateRangeKey, rangeStart: Date): Date {
+  const prev = new Date(rangeStart)
+  switch (range) {
+    case "week":   prev.setDate(prev.getDate() - 7);       break
+    case "month":  prev.setMonth(prev.getMonth() - 1);     break
+    case "quarter":prev.setMonth(prev.getMonth() - 3);     break
+    case "year":   prev.setFullYear(prev.getFullYear() - 1); break
+  }
+  return prev
+}
+
+// Returns the exclusive end of the current calendar period (i.e. start of the NEXT period).
+export function getRangeEnd(range: DateRangeKey, rangeStart: Date): Date {
+  const end = new Date(rangeStart)
+  switch (range) {
+    case "week":    end.setDate(end.getDate() + 7);       break
+    case "month":   end.setMonth(end.getMonth() + 1);     break
+    case "quarter": end.setMonth(end.getMonth() + 3);     break
+    case "year":    end.setFullYear(end.getFullYear() + 1); break
+  }
+  return end
+}
+
+// Returns a human-readable "MMM D – MMM D, YYYY" label for the current range.
+export function formatDateRangeLabel(range: DateRangeKey): string {
+  const start = getDateRangeStart(range)
+  const end = new Date(getRangeEnd(range, start))
+  end.setDate(end.getDate() - 1) // inclusive end day
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  const year = end.getFullYear()
+  return `${fmt(start)} – ${fmt(end)}, ${year}`
+}
+
 // ----- Dashboard KPIs -----
 export interface DashboardKPIs {
   newLeadsToday: number
@@ -1630,17 +1779,18 @@ export interface DashboardKPIs {
   avgResponseTime: string
   conversionRate: number
   repeatCustomerRate: number
+  weeklyGrowth: number
 }
 
-export async function getDashboardKPIs(): Promise<DashboardKPIs> {
+export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<DashboardKPIs> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
-  
-  // Calculate date boundaries
+
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const weekStart = new Date(todayStart)
-  weekStart.setDate(weekStart.getDate() - 7)
+  const rangeStart = getDateRangeStart(range)
+  const rangeEnd = getRangeEnd(range, rangeStart)       // exclusive upper bound
+  const prevRangeStart = getPrevRangeStart(range, rangeStart)
 
   if (!companyId) {
     return {
@@ -1652,27 +1802,23 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
       avgResponseTime: "-",
       conversionRate: 0,
       repeatCustomerRate: 0,
+      weeklyGrowth: 0,
     }
   }
 
-  // Fetch leads and jobs in parallel for efficiency
-  const [leadsResult, jobsResult] = await Promise.all([
-    supabase.from("leads").select("*").eq("company_id", companyId),
-    supabase.from("jobs").select("*").eq("company_id", companyId),
-  ])
+  // Fetch leads only — all KPIs are derived from the leads table
+  const { data: leadsData, error: leadsError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("company_id", companyId)
 
-  const leads = leadsResult.data || []
-  const jobs = jobsResult.data || []
-
-  if (leadsResult.error) {
-    console.error("Error fetching leads for KPIs:", leadsResult.error)
-  }
-  if (jobsResult.error) {
-    console.error("Error fetching jobs for KPIs:", jobsResult.error)
+  if (leadsError) {
+    console.error("Error fetching leads for KPIs:", leadsError)
   }
 
-  // If both failed, return default values
-  if (!leads.length && !jobs.length) {
+  const leads = leadsData || []
+
+  if (!leads.length) {
     return {
       newLeadsToday: 0,
       leadsAwaitingResponse: 0,
@@ -1682,49 +1828,80 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
       avgResponseTime: "-",
       conversionRate: 0,
       repeatCustomerRate: 0,
+      weeklyGrowth: 0,
     }
   }
 
-  // New Leads Today - leads created today with status "new"
+  // For each lead, the effective date is scheduled_at (user-set job date) if present,
+  // otherwise created_at. This matches the pipeline display logic.
+  const effectiveDate = (lead: { scheduled_at?: string | null; created_at?: string | null }): Date =>
+    lead.scheduled_at ? new Date(lead.scheduled_at) : new Date(lead.created_at || 0)
+
+  // New Leads Today
   const newLeadsToday = leads.filter((lead) => {
     const createdAt = new Date(lead.created_at || 0)
-    return createdAt >= todayStart && (lead.status === "new" || !lead.status)
+    return createdAt >= todayStart && normalizeStatus(lead.status) === "new"
   }).length
 
-  // Awaiting Response - leads with status "new" or "contacted" that need attention
+  // Awaiting Response
   const leadsAwaitingResponse = leads.filter((lead) => {
-    const status = lead.status || "new"
-    return status === "new" || status === "contacted"
+    const s = normalizeStatus(lead.status)
+    return s === "new" || s === "contacted"
   }).length
 
-  // Quotes Out - leads with status "quoted"
-  const quotesOutstanding = leads.filter((lead) => lead.status === "quoted").length
-
-  // Booked Jobs this week - count from jobs table (scheduled this week)
-  const bookedThisWeek = jobs.filter((job) => {
-    const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
-    const createdAt = new Date(job.created_at || 0)
-    // Include jobs scheduled this week OR created this week
-    return (scheduledAt && scheduledAt >= weekStart) || createdAt >= weekStart
-  }).length
-
-  // Weekly Revenue - sum of price from jobs created/scheduled this week
-  const weeklyRevenue = jobs
-    .filter((job) => {
-      const scheduledAt = job.scheduled_at ? new Date(job.scheduled_at) : null
-      const createdAt = new Date(job.created_at || 0)
-      return (scheduledAt && scheduledAt >= weekStart) || createdAt >= weekStart
-    })
-    .reduce((sum, job) => sum + (job.price || 0), 0)
-
-  // Close Rate - percentage of leads that became "booked" vs total decided leads
-  const totalDecidedLeads = leads.filter((lead) => 
-    lead.status === "booked" || lead.status === "lost"
+  // Quotes Out
+  const quotesOutstanding = leads.filter(
+    (lead) => normalizeStatus(lead.status) === "quoted"
   ).length
-  const bookedLeads = leads.filter((lead) => lead.status === "booked").length
-  const conversionRate = totalDecidedLeads > 0 
-    ? Math.round((bookedLeads / totalDecidedLeads) * 100) 
+
+  // Booked Jobs — scheduled/completed leads whose effective date falls within [rangeStart, rangeEnd)
+  // Uses scheduled_at (user-set job date) if present, otherwise created_at.
+  const bookedThisWeek = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    const d = effectiveDate(lead)
+    return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
+  }).length
+
+  // Revenue — quote_amount sum for the same set of booked/completed leads in range
+  const weeklyRevenue = leads
+    .filter((lead) => {
+      const s = normalizeStatus(lead.status)
+      const d = effectiveDate(lead)
+      return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
+    })
+    .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
+
+  // Close Rate — won / (won + lost) for leads resolved in the selected range.
+  // "Won" = scheduled/completed, date = effectiveDate (scheduled_at ?? created_at).
+  // "Lost" = lost status, date = lost_at ?? created_at (when they were marked lost).
+  // Open leads (new/contacted/quoted) are excluded from both numerator and denominator.
+  const wonInRange = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    const d = effectiveDate(lead)
+    return (s === "scheduled" || s === "completed") && d >= rangeStart && d < rangeEnd
+  }).length
+  const lostInRange = leads.filter((lead) => {
+    const s = normalizeStatus(lead.status)
+    const d = lead.lost_at ? new Date(lead.lost_at) : new Date(lead.created_at || 0)
+    return s === "lost" && d >= rangeStart && d < rangeEnd
+  }).length
+  const resolvedInRange = wonInRange + lostInRange
+  const conversionRate = resolvedInRange > 0
+    ? Math.round((wonInRange / resolvedInRange) * 100)
     : 0
+
+  // Growth — current range vs prior same-length period
+  const prevRangeRevenue = leads
+    .filter((lead) => {
+      const s = normalizeStatus(lead.status)
+      const d = effectiveDate(lead)
+      return (s === "scheduled" || s === "completed") && d >= prevRangeStart && d < rangeStart
+    })
+    .reduce((sum, lead) => sum + (lead.quote_amount || 0), 0)
+
+  const weeklyGrowth = prevRangeRevenue > 0
+    ? Math.round(((weeklyRevenue - prevRangeRevenue) / prevRangeRevenue) * 100)
+    : weeklyRevenue > 0 ? 100 : 0
 
   return {
     newLeadsToday,
@@ -1735,6 +1912,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     avgResponseTime: "< 5 min",
     conversionRate,
     repeatCustomerRate: 0,
+    weeklyGrowth,
   }
 }
 
@@ -1927,20 +2105,127 @@ export function formatRelativeTime(date: string | Date): string {
 // FINANCE DATA
 // ============================================================================
 
-export interface FinanceData {
-  totalRevenue: number      // Scheduled + Completed leads quote_amount
-  scheduledRevenue: number  // Leads with status = scheduled (booked but not completed)
-  collectedRevenue: number  // Leads with status = completed
-  avgJobSize: number        // Average of scheduled + completed quote_amounts
-  outstandingAmount: number // Scheduled leads only (not yet completed)
-  outstandingCount: number  // Count of scheduled leads
-  jobCount: number          // Total scheduled + completed
-  leadsByStatus: Record<CanonicalLeadStatus, number>
-  revenueByService: { service: string; revenue: number; jobs: number; avgJob: number }[]
-  recentActivity: Activity[]
+export interface FinanceTransaction {
+  id: string
+  date: string              // ISO string
+  type: "income" | "expense"
+  category: string          // service_type or expense category key
+  description: string       // label for display
+  client: string            // customer_name or vendor
+  amount: number
+  status: "collected" | "scheduled" | "pending" | "cleared"
 }
 
-export async function getFinanceData(): Promise<FinanceData | null> {
+export interface FinanceChartBar {
+  label: string
+  revenue: number
+  expenses: number          // 0 until expenses table is added
+}
+
+export interface FinanceData {
+  totalRevenue: number
+  scheduledRevenue: number
+  collectedRevenue: number
+  avgJobSize: number
+  outstandingAmount: number
+  outstandingCount: number
+  jobCount: number
+  totalExpenses: number
+  grossProfit: number
+  profitMargin: number
+  leadsByStatus: Record<CanonicalLeadStatus, number>
+  revenueByService: { service: string; revenue: number; jobs: number; avgJob: number }[]
+  expensesByCategory: { category: string; label: string; amount: number; count: number }[]
+  recentActivity: Activity[]
+  periodTransactions: FinanceTransaction[]
+  chartData: FinanceChartBar[]
+}
+
+interface SupabaseExpense {
+  id: string
+  company_id: string
+  created_by: string
+  expense_category_id: string | null
+  amount: number | null
+  expense_date: string | null  // "YYYY-MM-DD"
+  vendor: string | null
+  description: string | null
+  status: string | null
+  payment_method: string | null
+  notes: string | null
+  receipt_url: string | null
+  linked_lead_id: string | null
+  created_at: string
+  updated_at: string | null
+  expense_categories?: { key: string; label: string | null } | null
+}
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+const DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+function buildFinanceChartData(
+  leads: SupabaseLead[],
+  expenses: SupabaseExpense[],
+  range: string,
+  start: Date,
+  end: Date
+): FinanceChartBar[] {
+  const edFn = (l: SupabaseLead) =>
+    l.scheduled_at ? new Date(l.scheduled_at) : new Date(l.created_at || 0)
+  const revenueLeads = leads.filter(
+    l => isScheduledStatus(l.status) || isCompletedStatus(l.status)
+  )
+
+  // Build time buckets based on range
+  const buckets: { label: string; start: Date; end: Date }[] = []
+
+  if (range === "this-week") {
+    for (let i = 0; i < 7; i++) {
+      const s = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+      const e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 1)
+      buckets.push({ label: DAY_NAMES[i], start: s, end: e })
+    }
+  } else if (range === "this-month" || range === "last-30") {
+    const cur = new Date(start)
+    let wk = 1
+    while (cur < end) {
+      const s = new Date(cur)
+      const e = new Date(cur)
+      e.setDate(e.getDate() + 7)
+      buckets.push({ label: `Wk ${wk}`, start: s, end: e > end ? new Date(end) : e })
+      cur.setDate(cur.getDate() + 7)
+      wk++
+    }
+  } else {
+    // Monthly buckets for this-quarter / ytd
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1)
+    while (cur < end) {
+      const s = new Date(cur)
+      const e = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
+      buckets.push({ label: MONTH_NAMES[cur.getMonth()], start: s, end: e })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+  }
+
+  return buckets.map(bucket => {
+    // expense_date is "YYYY-MM-DD" — parse as local date for comparison
+    const bucketExpenses = expenses.filter(exp => {
+      if (!exp.expense_date) return false
+      const [y, m, d] = exp.expense_date.split("-").map(Number)
+      const expDate = new Date(y, m - 1, d)
+      return expDate >= bucket.start && expDate < bucket.end
+    })
+    return {
+      label: bucket.label,
+      revenue: revenueLeads
+        .filter(l => { const d = edFn(l); return d >= bucket.start && d < bucket.end })
+        .reduce((sum, l) => sum + (l.quote_amount || 0), 0),
+      expenses: bucketExpenses.reduce((sum, e) => sum + (e.amount || 0), 0),
+    }
+  })
+}
+
+export async function getFinanceData(range = "this-month"): Promise<FinanceData | null> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
   
@@ -1970,6 +2255,39 @@ export async function getFinanceData(): Promise<FinanceData | null> {
     console.error("Error fetching jobs for finance:", jobsError)
   }
   
+  // Date bounds for the selected range
+  const { start: rangeStart, end: rangeEnd } = getFinanceDateBounds(range)
+
+  // Format dates as YYYY-MM-DD for expense_date comparison
+  const pad = (n: number) => String(n).padStart(2, "0")
+  const toDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const startDateStr = toDateStr(rangeStart)
+  const endDateStr = toDateStr(rangeEnd)
+
+  // Fetch expenses for selected date range — no FK join, categories resolved separately
+  const { data: expensesRaw, error: expensesError } = await supabase
+    .from("expenses")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("expense_date", startDateStr)
+    .lt("expense_date", endDateStr)
+
+  if (expensesError) {
+    console.error("Error fetching expenses for finance:", expensesError)
+  }
+
+  // Fetch expense categories separately to avoid PostgREST FK join dependency
+  const { data: expenseCategoriesRaw } = await supabase
+    .from("expense_categories")
+    .select("id, key, label")
+
+  const categoryById = new Map(
+    (expenseCategoriesRaw || []).map(c => [
+      c.id as string,
+      { key: c.key as string, label: c.label as string | null },
+    ])
+  )
+
   // Fetch recent activity
   const { data: activities, error: activitiesError } = await supabase
     .from("activity_log")
@@ -1977,73 +2295,130 @@ export async function getFinanceData(): Promise<FinanceData | null> {
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(10)
-  
+
   if (activitiesError) {
     console.error("Error fetching activities for finance:", activitiesError)
   }
-  
-  // Calculate revenue metrics from leads using normalized statuses
+
   const allLeads = (leads || []) as SupabaseLead[]
-  const allJobs = (jobs || []) as SupabaseJob[]
-  
-  // Filter leads by normalized status for finance calculations
-  // Scheduled leads = "scheduled" or legacy "booked"
-  const scheduledLeads = allLeads.filter(l => isScheduledStatus(l.status))
+  // Attach category data from the separate lookup so downstream transforms are unchanged
+  const rangeExpenses: SupabaseExpense[] = (expensesRaw || []).map(e => ({
+    ...e,
+    expense_categories: e.expense_category_id
+      ? (categoryById.get(e.expense_category_id) ?? null)
+      : null,
+  }))
+
+  // Effective date for each lead: scheduled_at if set, otherwise created_at
+  const edFn = (l: SupabaseLead) =>
+    l.scheduled_at ? new Date(l.scheduled_at) : new Date(l.created_at || 0)
+
+  // Leads whose effective date falls within [rangeStart, rangeEnd)
+  const rangeLeads = allLeads.filter(l => {
+    const d = edFn(l)
+    return d >= rangeStart && d < rangeEnd
+  })
+
+  // Revenue-bearing leads in range (scheduled + completed)
+  const scheduledLeads = rangeLeads.filter(l => isScheduledStatus(l.status))
+  const completedLeads = rangeLeads.filter(l => isCompletedStatus(l.status))
   const scheduledRevenue = scheduledLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  
-  // Completed leads = "completed" or legacy "complete"
-  const completedLeads = allLeads.filter(l => isCompletedStatus(l.status))
   const collectedRevenue = completedLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  
-  // Total revenue = scheduled + completed leads
   const totalRevenue = scheduledRevenue + collectedRevenue
-  
-  // Outstanding = scheduled leads (not yet completed)
   const outstandingAmount = scheduledRevenue
   const outstandingCount = scheduledLeads.length
-  
-  // Job count = scheduled + completed
   const jobCount = scheduledLeads.length + completedLeads.length
-  
-  // Average job size = total revenue / job count
   const avgJobSize = jobCount > 0 ? Math.round(totalRevenue / jobCount) : 0
-  
-  // Leads by status (using canonical statuses)
+
+  // Real expenses from DB
+  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  const grossProfit = totalRevenue - totalExpenses
+  const profitMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0
+
+  // Expenses grouped by category
+  const categoryMap = new Map<string, { label: string; amount: number; count: number }>()
+  rangeExpenses.forEach(e => {
+    const key = e.expense_categories?.key || "uncategorized"
+    const label = e.expense_categories?.label || e.expense_categories?.key || "Uncategorized"
+    const existing = categoryMap.get(key) || { label, amount: 0, count: 0 }
+    categoryMap.set(key, {
+      label,
+      amount: existing.amount + (e.amount || 0),
+      count: existing.count + 1,
+    })
+  })
+  const expensesByCategory = Array.from(categoryMap.entries())
+    .map(([category, data]) => ({ category, ...data }))
+    .sort((a, b) => b.amount - a.amount)
+
+  // Leads by status (all leads, not range-filtered — pipeline overview)
   const leadsByStatus: Record<CanonicalLeadStatus, number> = {
-    new: 0,
-    contacted: 0,
-    quoted: 0,
-    scheduled: 0,
-    completed: 0,
-    cancelled: 0,
-    lost: 0,
+    new: 0, contacted: 0, quoted: 0, scheduled: 0, completed: 0, cancelled: 0, lost: 0,
   }
   allLeads.forEach(l => {
     const status = normalizeStatus(l.status)
     leadsByStatus[status] = (leadsByStatus[status] || 0) + 1
   })
-  
-  // Revenue by service type (scheduled + completed leads)
+
+  // Revenue by service type — uses range-filtered revenue leads
   const serviceMap = new Map<string, { revenue: number; jobs: number }>()
-  allLeads.filter(l => (isScheduledStatus(l.status) || isCompletedStatus(l.status)) && l.service_type).forEach(l => {
-    const service = l.service_type || "Other"
-    const existing = serviceMap.get(service) || { revenue: 0, jobs: 0 }
-    serviceMap.set(service, {
-      revenue: existing.revenue + (l.quote_amount || 0),
-      jobs: existing.jobs + 1,
+  rangeLeads
+    .filter(l => (isScheduledStatus(l.status) || isCompletedStatus(l.status)) && l.service_type)
+    .forEach(l => {
+      const service = l.service_type || "Other"
+      const existing = serviceMap.get(service) || { revenue: 0, jobs: 0 }
+      serviceMap.set(service, {
+        revenue: existing.revenue + (l.quote_amount || 0),
+        jobs: existing.jobs + 1,
+      })
     })
-  })
-  
-  const revenueByService = Array.from(serviceMap.entries()).map(([service, data]) => ({
-    service,
-    revenue: data.revenue,
-    jobs: data.jobs,
-    avgJob: data.jobs > 0 ? Math.round(data.revenue / data.jobs) : 0,
-  })).sort((a, b) => b.revenue - a.revenue)
-  
-  // Map activities
+  const revenueByService = Array.from(serviceMap.entries())
+    .map(([service, data]) => ({
+      service,
+      revenue: data.revenue,
+      jobs: data.jobs,
+      avgJob: data.jobs > 0 ? Math.round(data.revenue / data.jobs) : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  // Income transactions — scheduled + completed leads in range
+  const incomeTransactions: FinanceTransaction[] = rangeLeads
+    .filter(l => isScheduledStatus(l.status) || isCompletedStatus(l.status))
+    .map(l => ({
+      id: l.id,
+      date: edFn(l).toISOString(),
+      type: "income" as const,
+      category: l.service_type || "Service",
+      description: l.service_type || "Job",
+      client: l.customer_name || "Client",
+      amount: l.quote_amount || 0,
+      status: isCompletedStatus(l.status) ? "collected" as const : "scheduled" as const,
+    }))
+
+  // Expense transactions from real DB rows
+  const expenseTransactions: FinanceTransaction[] = rangeExpenses.map(e => ({
+    id: e.id,
+    date: e.expense_date
+      ? new Date(e.expense_date + "T00:00:00").toISOString()
+      : e.created_at,
+    type: "expense" as const,
+    category: e.expense_categories?.key || "uncategorized",
+    description: e.description || e.expense_categories?.label || "Expense",
+    client: e.vendor || "—",
+    amount: e.amount || 0,
+    status: (e.status as "pending" | "cleared") || "pending",
+  }))
+
+  // All transactions sorted newest first
+  const periodTransactions: FinanceTransaction[] = [...incomeTransactions, ...expenseTransactions]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+  // Chart data bucketed by period
+  const chartData = buildFinanceChartData(allLeads, rangeExpenses, range, rangeStart, rangeEnd)
+
+  // Recent activity
   const recentActivity = (activities || []).map((a: SupabaseActivity) => mapSupabaseActivityToActivity(a))
-  
+
   return {
     totalRevenue,
     scheduledRevenue,
@@ -2052,8 +2427,42 @@ export async function getFinanceData(): Promise<FinanceData | null> {
     outstandingAmount,
     outstandingCount,
     jobCount,
+    totalExpenses,
+    grossProfit,
+    profitMargin,
     leadsByStatus,
     revenueByService,
+    expensesByCategory,
     recentActivity,
+    periodTransactions,
+    chartData,
   }
+}
+
+export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from("expense_categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+  if (error) {
+    console.error("Error fetching expense categories:", error)
+    return []
+  }
+  return (data || []) as ExpenseCategory[]
+}
+
+export async function createExpense(expense: ExpenseInsert): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("expenses")
+    .insert({ ...expense, company_id: companyId })
+  if (error) {
+    console.error("Error creating expense:", error)
+    return false
+  }
+  return true
 }
