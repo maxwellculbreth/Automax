@@ -63,8 +63,10 @@ export function NeedsActionPanel() {
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-500" />
+          </div>
           <h3 className="text-[13px] font-semibold text-foreground">Needs Action</h3>
         </div>
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500/15 px-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
@@ -81,7 +83,7 @@ export function NeedsActionPanel() {
               key={item.id}
               href={`/leads?id=${item.leadId}`}
               className={cn(
-                "flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/50 border-l-2",
+                "flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 border-l-2",
                 priorityStyle
               )}
             >
@@ -98,8 +100,8 @@ export function NeedsActionPanel() {
           )
         })}
       </div>
-      <div className="border-t border-border p-3.5">
-        <Button variant="ghost" size="sm" className="w-full text-[13px] h-9" asChild>
+      <div className="border-t border-border p-3">
+        <Button variant="ghost" size="sm" className="w-full text-[12px] h-8 text-muted-foreground hover:text-foreground" asChild>
           <Link href="/leads">View all leads</Link>
         </Button>
       </div>

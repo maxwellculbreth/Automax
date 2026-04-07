@@ -44,8 +44,10 @@ export function ScheduleOverview() {
   if (enrichedJobs.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <Calendar className="h-4 w-4 text-foreground" />
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600/10">
+            <Calendar className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          </div>
           <h3 className="text-[13px] font-semibold text-foreground">Today&apos;s Schedule</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-12 text-center px-5">
@@ -62,11 +64,13 @@ export function ScheduleOverview() {
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-foreground" />
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600/10">
+            <Calendar className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          </div>
           <h3 className="text-[13px] font-semibold text-foreground">Upcoming Jobs</h3>
         </div>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           {enrichedJobs.length} scheduled
         </span>
       </div>
@@ -86,7 +90,7 @@ export function ScheduleOverview() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-semibold text-foreground tabular-nums">
+                    <span className="rounded-md bg-blue-600/10 dark:bg-blue-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300 tabular-nums">
                       {job.scheduled_time || "TBD"}
                     </span>
                     <span className="text-[12px] text-muted-foreground">
@@ -114,8 +118,8 @@ export function ScheduleOverview() {
           )
         })}
       </div>
-      <div className="border-t border-border p-3.5">
-        <Button variant="ghost" size="sm" className="w-full text-[13px] h-9" asChild>
+      <div className="border-t border-border p-3">
+        <Button variant="ghost" size="sm" className="w-full text-[12px] h-8 text-muted-foreground hover:text-foreground" asChild>
           <Link href="/pipeline">View full schedule</Link>
         </Button>
       </div>

@@ -93,34 +93,36 @@ export function DashboardKPIs({ range = "week" }: DashboardKPIsProps) {
         const showAlert = kpi.alert && rawValue > 0
         
         return (
-          <div 
-            key={kpi.key} 
+          <div
+            key={kpi.key}
             className={cn(
-              "rounded-lg border border-border bg-card p-4",
-              showAlert && "border-amber-500/30 bg-amber-500/5 dark:border-amber-500/20 dark:bg-amber-500/10"
+              "rounded-lg border border-border bg-card p-4 sm:p-5 transition-colors",
+              showAlert
+                ? "border-amber-500/30 bg-amber-500/5 dark:border-amber-500/20 dark:bg-amber-900/10"
+                : "hover:border-border/80 hover:bg-card/80"
             )}
           >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {kpi.label}
             </p>
             <p className={cn(
-              "mt-1.5 text-[22px] sm:text-2xl font-semibold tabular-nums tracking-tight leading-none",
+              "mt-2 text-2xl sm:text-[26px] font-semibold tabular-nums tracking-tight leading-none",
               showAlert ? "text-amber-600 dark:text-amber-400" : "text-foreground"
             )}>
               {value}
             </p>
-            <div className="mt-2 flex items-center gap-1">
+            <div className="mt-2.5 flex items-center gap-1">
               {trendUp !== null && (
                 trendUp ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                  <TrendingUp className="h-3 w-3 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <TrendingDown className="h-3 w-3 text-amber-500 dark:text-amber-400 flex-shrink-0" />
                 )
               )}
               <span className={cn(
                 "text-[11px] leading-none",
                 trendUp === true && "text-emerald-600 dark:text-emerald-400",
-                trendUp === false && "text-amber-600 dark:text-amber-400",
+                trendUp === false && "text-amber-500 dark:text-amber-400",
                 trendUp === null && "text-muted-foreground"
               )}>
                 {trend}

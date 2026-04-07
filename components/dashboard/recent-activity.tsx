@@ -84,8 +84,10 @@ export function RecentActivityFeed() {
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-        <Activity className="h-4 w-4" />
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+          <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
         <h3 className="text-[13px] font-semibold text-foreground">Recent Activity</h3>
       </div>
       <div className="divide-y divide-border">
@@ -97,8 +99,10 @@ export function RecentActivityFeed() {
           const description = activity.description || "Activity recorded"
 
           return (
-            <div key={activity.id} className="flex items-start gap-3 px-4 py-3.5">
-              <Icon className={cn("h-4 w-4 mt-0.5 flex-shrink-0", color)} />
+            <div key={activity.id} className="flex items-start gap-3 px-4 py-3">
+              <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-muted">
+                <Icon className={cn("h-3.5 w-3.5", color)} />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] text-foreground">
                   {description}
@@ -135,8 +139,8 @@ export function RecentActivityFeed() {
           )
         })}
       </div>
-      <div className="border-t border-border p-3.5">
-        <Button variant="ghost" size="sm" className="w-full text-[13px] h-9">
+      <div className="border-t border-border p-3">
+        <Button variant="ghost" size="sm" className="w-full text-[12px] h-8 text-muted-foreground hover:text-foreground">
           View all activity
         </Button>
       </div>
