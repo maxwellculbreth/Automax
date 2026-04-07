@@ -25,6 +25,12 @@ export async function GET(req: NextRequest) {
   }
 
   // Service-role client bypasses RLS — required for cron context (no user session)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is not set. Add it in Vercel → Settings → Environment Variables (enable Preview + Production)." },
+      { status: 500 }
+    )
+  }
   const supabase = createServiceClient()
   const now = new Date().toISOString()
 
