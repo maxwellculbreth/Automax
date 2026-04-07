@@ -102,7 +102,7 @@ export function ConversationPanel({
     
     await createMessage({
       lead_id: lead.id,
-      business_id: lead.business_id,
+      company_id: lead.business_id,
       content: message.trim(),
       sender_type: "business",
       channel: "sms",
