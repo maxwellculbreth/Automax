@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   if (fetchError) {
     console.error("Cron: failed to fetch scheduled messages:", fetchError)
-    return NextResponse.json({ error: "Failed to fetch pending messages", detail: fetchError }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch pending messages" }, { status: 500 })
   }
 
   if (!pending?.length) {
