@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pending, error: fetchError } = await supabase
     .from("scheduled_messages")
-    .select("id, lead_id, company_id, content, leads(phone, name)")
+    .select("id, lead_id, company_id, content, leads(phone, customer_name)")
     .eq("status", "pending")
     .lte("send_at", now)
     .limit(50)
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const results = { sent: 0, failed: 0, errors: [] as string[] }
 
   for (const msg of pending) {
-    const lead = msg.leads as { phone: string; name: string } | null
+    const lead = msg.leads as { phone: string; customer_name: string } | null
 
     if (!lead?.phone) {
       await supabase

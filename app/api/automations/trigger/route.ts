@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
     // Fetch the lead
     const { data: lead } = await supabase
       .from("leads")
-      .select("id, name, phone")
+      .select("id, customer_name, phone")
       .eq("id", lead_id)
-      .eq("business_id", business_id)
+      .eq("company_id", business_id)
       .single()
 
     if (!lead) {
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         lead_id,
         trigger_event,
         status: "triggered",
-        metadata: { lead_name: lead.name, lead_phone: lead.phone },
+        metadata: { lead_name: lead.customer_name, lead_phone: lead.phone },
       })
 
       const delayMinutes = DELAY_MINUTES[automation.type] ?? 60
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       const config = automation.config as { review_link?: string } | null
       const reviewLink = config?.review_link
 
-      const content = buildMessage(automation.type, lead.name, businessName, reviewLink)
+      const content = buildMessage(automation.type, lead.customer_name, businessName, reviewLink)
 
       const { data: scheduledMsg, error: scheduleError } = await supabase
         .from("scheduled_messages")
