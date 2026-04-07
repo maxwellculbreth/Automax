@@ -8,7 +8,7 @@ import { createServerClient } from "@supabase/ssr"
 export function createServiceClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.service_role)!,
     // No cookie handling — service role doesn't use sessions
     { cookies: { getAll: () => [], setAll: () => {} } }
   )
