@@ -206,133 +206,113 @@ export default function PipelinePage() {
         </div>
       </header>
 
-      {/*
-        ── Scrollable content area ────────────────────────────────────────
-        Both the board and the insights panel sit inside a single
-        overflow-x-auto container. The min-w-max wrapper ensures the
-        insights panel is always exactly as wide as the six columns.
-      */}
+      {/* ── Kanban board (horizontal scroll intact) ──────────────────── */}
       <div className="overflow-x-auto">
-        <div className="min-w-max">
+        <div className="min-w-max pt-5">
+          <KanbanBoard
+            leads={filteredLeads}
+            onDragEnd={handleDragEnd}
+            onAddLead={() => setShowAddLead(true)}
+          />
+        </div>
+      </div>
 
-          {/* Board */}
-          <div className="pt-5">
-            <KanbanBoard
-              leads={filteredLeads}
-              onDragEnd={handleDragEnd}
-              onAddLead={() => setShowAddLead(true)}
-            />
+      {/* ── Pipeline Insights (full-width, responsive, no overflow) ───── */}
+      <div className="px-4 sm:px-5 pb-8 pt-4">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-foreground">Pipeline Insights</span>
+              <span className="text-[11px] text-muted-foreground/50">
+                {timeframe === "all" ? "All time" : TIMEFRAMES.find(t => t.value === timeframe)?.label}
+              </span>
+            </div>
+            {attentionCount > 0 && (
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <AlertCircle className="h-3 w-3" />
+                <span className="hidden sm:inline">{attentionCount} need{attentionCount !== 1 ? "" : "s"} attention</span>
+                <span className="sm:hidden">{attentionCount}</span>
+              </div>
+            )}
           </div>
 
-          {/* ── Bottom insights panel ───────────────────────────────── */}
-          <div className="px-5 pb-8">
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+          {/* Responsive 3-section grid: stacked on mobile, side-by-side on md+ */}
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
 
-              {/* Panel header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[13px] font-semibold text-foreground">Pipeline Insights</span>
-                  <span className="text-[11px] text-muted-foreground/60">
-                    {timeframe === "all" ? "All time" : TIMEFRAMES.find(t => t.value === timeframe)?.label}
-                  </span>
-                </div>
-                {attentionCount > 0 && (
-                  <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    <AlertCircle className="h-3 w-3" />
-                    {attentionCount} lead{attentionCount !== 1 ? "s" : ""} need attention
-                  </div>
-                )}
+            {/* ── Performance ── */}
+            <div className="p-5">
+              <p className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">Performance</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <MetricTile label="Conversion" value={`${conversionRate}%`}  sub="leads closed" />
+                <MetricTile label="Close Rate"  value={`${closeRate}%`}       sub="decided leads" />
+                <MetricTile label="Avg Ticket"  value={avgTicket > 0 ? formatCurrency(avgTicket) : "—"} sub="per lead" />
+                <MetricTile label="Collected"   value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"} sub="completed" accent />
               </div>
+            </div>
 
-              {/* Three-column layout */}
-              <div className="grid grid-cols-3 divide-x divide-border">
-
-                {/* ── Performance ── */}
-                <div className="px-6 py-5">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Performance</p>
-                  <div className="space-y-3.5">
-                    <MetricRow label="Conversion Rate" value={`${conversionRate}%`}      sub="leads that closed" />
-                    <MetricRow label="Avg Ticket Value" value={avgTicket > 0 ? formatCurrency(avgTicket) : "—"} sub="per lead with value" />
-                    <MetricRow label="Close Rate"       value={`${closeRate}%`}           sub="of decided leads" />
-                    <MetricRow
-                      label="Revenue Collected"
-                      value={collectedValue > 0 ? formatCurrency(collectedValue) : "—"}
-                      sub="from completed leads"
-                      accent
-                    />
-                  </div>
-                </div>
-
-                {/* ── Stage Breakdown ── */}
-                <div className="px-6 py-5">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Stage Breakdown</p>
-                  <div className="space-y-3">
-                    {stageData.map(stage => (
-                      <div key={stage.id} className="flex items-center gap-3">
-                        {/* Dot + label */}
-                        <div className="flex items-center gap-2 w-24 flex-shrink-0">
-                          <div className={cn("h-2 w-2 rounded-full flex-shrink-0", stage.dotColor)} />
-                          <span className="text-[12px] text-foreground/80 truncate">{stage.label}</span>
-                        </div>
-                        {/* Bar */}
-                        <div className="flex-1 h-2 rounded-full bg-secondary/60 overflow-hidden">
-                          <div
-                            className={cn("h-full rounded-full transition-all duration-500", stage.dotColor, "opacity-70")}
-                            style={{ width: `${Math.round(stage.count / maxStageCount * 100)}%` }}
-                          />
-                        </div>
-                        {/* Count */}
-                        <span className="text-[12px] font-semibold text-foreground tabular-nums w-5 text-right flex-shrink-0">
-                          {stage.count}
-                        </span>
-                        {/* Value */}
-                        <span className="text-[11px] text-muted-foreground tabular-nums w-16 text-right flex-shrink-0">
-                          {stage.value > 0 ? formatCurrency(stage.value) : "—"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── Needs Attention ── */}
-                <div className="px-6 py-5">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest mb-4">Needs Attention</p>
-                  {attentionCount === 0 ? (
-                    <div className="flex items-center justify-center h-24">
-                      <p className="text-[12px] text-muted-foreground/40">All caught up</p>
+            {/* ── Stage Breakdown ── */}
+            <div className="p-5">
+              <p className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">Stage Breakdown</p>
+              <div className="space-y-2.5">
+                {stageData.map(stage => (
+                  <div key={stage.id} className="flex items-center gap-2.5">
+                    <div className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", stage.dotColor)} />
+                    <span className="text-[12px] text-foreground/70 w-[4.5rem] flex-shrink-0 truncate">{stage.label}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary/60 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all duration-500 opacity-60", stage.dotColor)}
+                        style={{ width: `${Math.round(stage.count / maxStageCount * 100)}%` }}
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {needsContact.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <MessageSquareDashed className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                            <span className="text-[11px] font-semibold text-muted-foreground">No contact in 7+ days</span>
-                          </div>
-                          <div className="space-y-0.5">
-                            {needsContact.map(l => <AttentionRow key={l.id} lead={l} />)}
-                          </div>
-                        </div>
-                      )}
-                      {unquoted.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <FileQuestion className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
-                            <span className="text-[11px] font-semibold text-muted-foreground">Contacted but unquoted</span>
-                          </div>
-                          <div className="space-y-0.5">
-                            {unquoted.map(l => <AttentionRow key={l.id} lead={l} />)}
-                          </div>
-                        </div>
-                      )}
+                    <span className="text-[12px] font-semibold text-foreground tabular-nums w-5 text-right flex-shrink-0">
+                      {stage.count}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground/70 tabular-nums w-14 text-right flex-shrink-0">
+                      {stage.value > 0 ? formatCurrency(stage.value) : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Needs Attention ── */}
+            <div className="p-5">
+              <p className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest mb-3">Needs Attention</p>
+              {attentionCount === 0 ? (
+                <div className="flex items-center justify-center h-16">
+                  <p className="text-[12px] text-muted-foreground/40">All caught up</p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {needsContact.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <MessageSquareDashed className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">No contact · 7+ days</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {needsContact.map(l => <AttentionRow key={l.id} lead={l} />)}
+                      </div>
+                    </div>
+                  )}
+                  {unquoted.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <FileQuestion className="h-3 w-3 text-violet-500 flex-shrink-0" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Contacted · unquoted</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {unquoted.map(l => <AttentionRow key={l.id} lead={l} />)}
+                      </div>
                     </div>
                   )}
                 </div>
-
-              </div>
+              )}
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
@@ -356,6 +336,21 @@ function StatCard({ label, value, icon: Icon, accent }: { label: string; value: 
       )}>
         {value}
       </p>
+    </div>
+  )
+}
+
+function MetricTile({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+  return (
+    <div className="rounded-lg bg-secondary/30 px-3 py-2.5">
+      <p className={cn(
+        "text-[17px] font-bold tabular-nums leading-tight",
+        accent ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+      )}>
+        {value}
+      </p>
+      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{label}</p>
+      {sub && <p className="text-[10px] text-muted-foreground/40 mt-0.5">{sub}</p>}
     </div>
   )
 }
