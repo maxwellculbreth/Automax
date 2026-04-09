@@ -22,6 +22,8 @@ import {
   getActivities,
   getJobs,
   getUpcomingJobs,
+  getTodayJobs,
+  getWeekJobs,
   getBusiness,
   updateBusiness,
   getUsers,
@@ -47,6 +49,7 @@ import {
   type Company,
   type FinanceData,
   type DateRangeKey,
+  type CustomDateRange,
   type ExpenseCategory,
 } from "@/lib/data-service"
 import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert, ScheduledMessageInsert } from "@/lib/database.types"
@@ -325,6 +328,24 @@ export function useUpcomingJobs(limit = 5) {
   }
 }
 
+export function useTodayJobs() {
+  const { data, error, isLoading, mutate } = useSWR<Job[]>(
+    "today-jobs",
+    getTodayJobs,
+    { refreshInterval: 60000 }
+  )
+  return { jobs: data ?? [], isLoading, isError: !!error, mutate }
+}
+
+export function useWeekJobs() {
+  const { data, error, isLoading, mutate } = useSWR<Job[]>(
+    "week-jobs",
+    getWeekJobs,
+    { refreshInterval: 60000 }
+  )
+  return { jobs: data ?? [], isLoading, isError: !!error, mutate }
+}
+
 // ============================================================================
 // BUSINESS
 // ============================================================================
@@ -384,13 +405,15 @@ export function useCurrentUser() {
 // DASHBOARD
 // ============================================================================
 
-export function useDashboardKPIs(range: DateRangeKey = "week") {
+export function useDashboardKPIs(range: DateRangeKey = "week", customRange?: CustomDateRange) {
+  const cacheKey = customRange
+    ? `dashboard-kpis-custom-${customRange.from.toISOString().slice(0, 10)}-${customRange.to.toISOString().slice(0, 10)}`
+    : `dashboard-kpis-${range}`
+
   const { data, error, isLoading, mutate } = useSWR<DashboardKPIs>(
-    `dashboard-kpis-${range}`,
-    () => getDashboardKPIs(range),
-    {
-      refreshInterval: 60000,
-    }
+    cacheKey,
+    () => getDashboardKPIs(range, customRange),
+    { refreshInterval: 60000 }
   )
 
   return {

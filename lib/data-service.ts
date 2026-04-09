@@ -1563,11 +1563,9 @@ function mapSupabaseActivityToActivity(activity: SupabaseActivity): Activity {
 export async function getActivities(limit = 20): Promise<Activity[]> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    return []
-  }
-  
+
+  if (!companyId) return []
+
   const { data, error } = await supabase
     .from("activity_log")
     .select("*")
@@ -1580,11 +1578,38 @@ export async function getActivities(limit = 20): Promise<Activity[]> {
     return []
   }
 
-  if (!data || data.length === 0) {
-    return []
+  if (!data || data.length === 0) return []
+
+  // Collect unique lead IDs so we can fetch current names (avoids stale name in description)
+  const leadIds = [
+    ...new Set(
+      data
+        .filter((a: SupabaseActivity) => a.lead_id)
+        .map((a: SupabaseActivity) => a.lead_id as string)
+    ),
+  ]
+
+  const leadNameMap: Record<string, string> = {}
+  if (leadIds.length > 0) {
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("id, customer_name")
+      .in("id", leadIds)
+    if (leadsData) {
+      for (const l of leadsData) {
+        if (l.id && l.customer_name) leadNameMap[l.id] = l.customer_name
+      }
+    }
   }
 
-  return data.map((activity: SupabaseActivity) => mapSupabaseActivityToActivity(activity))
+  return data.map((activity: SupabaseActivity) => {
+    const mapped = mapSupabaseActivityToActivity(activity)
+    // Inject current lead name so the feed always shows up-to-date names
+    if (activity.lead_id && leadNameMap[activity.lead_id]) {
+      mapped.metadata = { lead_name: leadNameMap[activity.lead_id] }
+    }
+    return mapped
+  })
 }
 
 // ----- Jobs (uses Supabase "jobs" table) -----
@@ -1699,6 +1724,63 @@ export async function getUpcomingJobs(limit = 5): Promise<Job[]> {
   return data.map((job: SupabaseJob) => mapSupabaseJobToJob(job))
 }
 
+// Jobs scheduled for today (any time, including past)
+export async function getTodayJobs(): Promise<Job[]> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return []
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("scheduled_at", todayStart.toISOString())
+    .lt("scheduled_at", tomorrowStart.toISOString())
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching today's jobs:", error)
+    return []
+  }
+  return (data || []).map((job: SupabaseJob) => mapSupabaseJobToJob(job))
+}
+
+// Jobs scheduled for the current calendar week (Mon–Sun), excludes cancelled
+export async function getWeekJobs(): Promise<Job[]> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return []
+
+  const now = new Date()
+  const day = now.getDay()
+  const daysFromMonday = day === 0 ? 6 : day - 1
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("scheduled_at", weekStart.toISOString())
+    .lt("scheduled_at", weekEnd.toISOString())
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching week jobs:", error)
+    return []
+  }
+  return (data || []).map((job: SupabaseJob) => mapSupabaseJobToJob(job))
+}
+
 // ----- AI Generations -----
 export async function getAIGenerations(limit = 10): Promise<AIGeneration[]> {
   // TODO: Replace with Supabase query
@@ -1722,6 +1804,9 @@ export const dateRangeButtonLabels: Record<DateRangeKey, string> = {
   quarter: "This Quarter",
   year: "This Year",
 }
+
+// Optional custom date range to override the preset DateRangeKey window
+export interface CustomDateRange { from: Date; to: Date }
 
 // Returns the start of the current calendar period for the given range key.
 export function getDateRangeStart(range: DateRangeKey): Date {
@@ -1834,15 +1919,21 @@ export interface DashboardKPIs {
   weeklyGrowth: number
 }
 
-export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<DashboardKPIs> {
+export async function getDashboardKPIs(
+  range: DateRangeKey = "week",
+  customRange?: CustomDateRange
+): Promise<DashboardKPIs> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const rangeStart = getDateRangeStart(range)
-  const rangeEnd = getRangeEnd(range, rangeStart)       // exclusive upper bound
-  const prevRangeStart = getPrevRangeStart(range, rangeStart)
+  const rangeStart = customRange ? customRange.from : getDateRangeStart(range)
+  const rangeEnd   = customRange ? customRange.to   : getRangeEnd(range, rangeStart)
+  // For custom ranges, use an equally-long preceding window for growth comparison
+  const prevRangeStart = customRange
+    ? new Date(rangeStart.getTime() - (rangeEnd.getTime() - rangeStart.getTime()))
+    : getPrevRangeStart(range, rangeStart)
 
   if (!companyId) {
     return {
@@ -2018,8 +2109,7 @@ export async function getUrgentItems(): Promise<UrgentItem[]> {
   // Add new leads (highest priority)
   newLeads.forEach((lead) => {
     const createdAt = lead.created_at ? new Date(lead.created_at) : now
-    const minutesAgo = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60)))
-    const timeLabel = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)}h ago`
+    const timeLabel = formatElapsed(Math.max(0, now.getTime() - createdAt.getTime()))
     
     items.push({
       id: `urgent_${lead.id}`,
@@ -2052,12 +2142,12 @@ export async function getUrgentItems(): Promise<UrgentItem[]> {
     if (lead.next_follow_up_at && new Date(lead.next_follow_up_at) < now) return
     
     const updatedAt = lead.updated_at ? new Date(lead.updated_at) : new Date(lead.created_at || now)
-    const hoursAgo = Math.max(0, Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60)))
-    
+    const elapsed = Math.max(0, now.getTime() - updatedAt.getTime())
+
     items.push({
       id: `urgent_quote_${lead.id}`,
       type: "quote_stale",
-      title: `Quote sent ${hoursAgo}h ago`,
+      title: `Quote sent ${formatElapsed(elapsed)}`,
       subtitle: `${lead.customer_name || "Unknown"} • ${lead.service_type || "Service"} • $${lead.quote_amount || 0}`,
       leadId: lead.id,
       priority: "medium",
@@ -2136,6 +2226,19 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount)
+}
+
+// Returns a compact elapsed-time label that never produces values like "162h ago".
+// Under 24 hours → hours only; 24+ hours → days + remainder hours.
+export function formatElapsed(ms: number): string {
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(ms / 3600000)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(ms / 86400000)
+  const remHours = hours - days * 24
+  return remHours > 0 ? `${days}d ${remHours}h ago` : `${days}d ago`
 }
 
 export function formatRelativeTime(date: string | Date): string {
