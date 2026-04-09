@@ -2,67 +2,82 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X, ChevronDown, ArrowRight } from 'lucide-react'
+import {
+  Menu, X, ChevronDown, ArrowRight,
+  LayoutDashboard, Inbox, FileText, Users, Kanban, BarChart2,
+  Star, Globe, MousePointerClick, Mail, Shield,
+  Bot, Bell, Calendar, Zap, TrendingUp,
+  Droplets, Leaf, Sparkles, Car,
+  BookOpen, CalendarDays, HelpCircle, Calculator,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const NAV_MENUS = {
+type NavItem = { label: string; desc: string; href: string; icon: React.ElementType }
+type NavMenu = { label: string; cols: 2 | 3; items: NavItem[] }
+
+const NAV_MENUS: Record<string, NavMenu> = {
   platform: {
     label: 'Platform',
+    cols: 3,
     items: [
-      { label: 'CRM Overview',      desc: 'Your full business in one place',       href: '#' },
-      { label: 'Lead Inbox',        desc: 'Capture and respond instantly',         href: '#' },
-      { label: 'Quotes & Payments', desc: 'Send professional quotes in minutes',   href: '#' },
-      { label: 'Clients',           desc: 'Manage relationships and history',      href: '#' },
-      { label: 'Dashboard',         desc: 'Revenue, jobs, and KPIs at a glance',   href: '#' },
+      { label: 'CRM Overview',       desc: 'Your full business in one place',       href: '/platform/crm-overview',       icon: LayoutDashboard },
+      { label: 'Lead Inbox',          desc: 'Capture and respond instantly',         href: '/platform/lead-inbox',          icon: Inbox },
+      { label: 'Quotes & Payments',   desc: 'Send professional quotes in minutes',   href: '/platform/quotes-payments',     icon: FileText },
+      { label: 'Clients',             desc: 'Manage relationships and history',      href: '/platform/clients',             icon: Users },
+      { label: 'Pipeline & Jobs',     desc: 'Track every job from lead to done',     href: '/platform/pipeline-jobs',       icon: Kanban },
+      { label: 'Business Dashboard',  desc: 'Revenue, jobs, and KPIs at a glance',  href: '/platform/business-dashboard',  icon: BarChart2 },
     ],
   },
   growth: {
     label: 'Growth',
+    cols: 2,
     items: [
-      { label: 'Google Reviews',    desc: 'Automate review requests after every job', href: '#' },
-      { label: 'Website Builder',   desc: 'Professional site built free for you',     href: '#' },
-      { label: 'Lead Capture',      desc: 'Convert website visitors into leads',      href: '#' },
-      { label: 'Follow-Up Campaigns', desc: 'Re-engage cold leads automatically',     href: '#' },
-      { label: 'Reputation Tools',  desc: 'Dominate local search and trust signals',  href: '#' },
+      { label: 'Google Reviews',      desc: 'Automate review requests after every job', href: '#', icon: Star },
+      { label: 'Website Builder',     desc: 'Professional site built free for you',     href: '#', icon: Globe },
+      { label: 'Lead Capture',        desc: 'Convert website visitors into leads',      href: '#', icon: MousePointerClick },
+      { label: 'Follow-Up Campaigns', desc: 'Re-engage cold leads automatically',       href: '#', icon: Mail },
+      { label: 'Reputation Tools',    desc: 'Dominate local search and trust signals',  href: '#', icon: Shield },
     ],
   },
   automation: {
     label: 'Automation',
+    cols: 2,
     items: [
-      { label: 'AI Assistant',        desc: 'Qualifies leads and drafts replies',     href: '#' },
-      { label: 'Smart Follow-Ups',    desc: 'Never let a lead go cold again',         href: '#' },
-      { label: 'Scheduling',          desc: 'Book jobs without the back-and-forth',   href: '#' },
-      { label: 'Workflow Automation', desc: 'Build custom trigger-action sequences',  href: '#' },
-      { label: 'Revenue Insights',    desc: 'Forecast and track growth over time',    href: '#' },
+      { label: 'AI Assistant',        desc: 'Qualifies leads and drafts replies',    href: '#', icon: Bot },
+      { label: 'Smart Follow-Ups',    desc: 'Never let a lead go cold again',        href: '#', icon: Bell },
+      { label: 'Scheduling',          desc: 'Book jobs without the back-and-forth',  href: '#', icon: Calendar },
+      { label: 'Workflow Automation', desc: 'Build custom trigger-action sequences', href: '#', icon: Zap },
+      { label: 'Revenue Insights',    desc: 'Forecast and track growth over time',   href: '#', icon: TrendingUp },
     ],
   },
   industries: {
     label: 'Industries',
+    cols: 2,
     items: [
-      { label: 'Pressure Washing', desc: 'Built for wash pros', href: '#' },
-      { label: 'Landscaping',      desc: 'Manage seasonal volume', href: '#' },
-      { label: 'Cleaning',         desc: 'Recurring client tools', href: '#' },
-      { label: 'Mobile Detailing', desc: 'Route and book faster', href: '#' },
+      { label: 'Pressure Washing', desc: 'Built for wash pros',      href: '#', icon: Droplets },
+      { label: 'Landscaping',      desc: 'Manage seasonal volume',   href: '#', icon: Leaf },
+      { label: 'Cleaning',         desc: 'Recurring client tools',   href: '#', icon: Sparkles },
+      { label: 'Mobile Detailing', desc: 'Route and book faster',    href: '#', icon: Car },
     ],
   },
   resources: {
     label: 'Resources',
+    cols: 2,
     items: [
-      { label: 'Case Studies',   desc: 'See how contractors grow with Automax', href: '#' },
-      { label: 'Book a Demo',    desc: 'See the platform live in 20 minutes',   href: '#' },
-      { label: 'Help Center',    desc: 'Guides, docs, and support',             href: '#' },
-      { label: 'ROI Calculator', desc: 'Estimate your growth potential',        href: '#' },
+      { label: 'Case Studies',   desc: 'See how contractors grow with Automax', href: '#', icon: BookOpen },
+      { label: 'Book a Demo',    desc: 'See the platform live in 20 minutes',   href: '#', icon: CalendarDays },
+      { label: 'Help Center',    desc: 'Guides, docs, and support',             href: '#', icon: HelpCircle },
+      { label: 'ROI Calculator', desc: 'Estimate your growth potential',        href: '#', icon: Calculator },
     ],
   },
-} as const
+}
 
 type MenuKey = keyof typeof NAV_MENUS
 
 export function MarketingNav() {
-  const [activeMenu, setActiveMenu]   = useState<MenuKey | null>(null)
-  const [mobileOpen, setMobileOpen]   = useState(false)
-  const [scrolled, setScrolled]       = useState(false)
-  const navRef = useRef<HTMLDivElement>(null)
+  const [activeMenu, setActiveMenu] = useState<MenuKey | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled]     = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -75,11 +90,9 @@ export function MarketingNav() {
     if (timerRef.current) clearTimeout(timerRef.current)
     setActiveMenu(key)
   }
-
   function scheduleClose() {
-    timerRef.current = setTimeout(() => setActiveMenu(null), 120)
+    timerRef.current = setTimeout(() => setActiveMenu(null), 140)
   }
-
   function cancelClose() {
     if (timerRef.current) clearTimeout(timerRef.current)
   }
@@ -96,7 +109,7 @@ export function MarketingNav() {
       )}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <div ref={navRef} className="flex items-center h-16 gap-8">
+        <div className="flex items-center h-16 gap-8">
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
@@ -160,57 +173,69 @@ export function MarketingNav() {
         </div>
       </div>
 
-      {/* Mega-menu dropdown */}
+      {/* ── Mega-menu dropdown ───────────────────────────────────────────── */}
       {activeMenu && menu && (
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)]"
+          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)]"
         >
-          <div className="mx-auto max-w-7xl px-8 py-5">
-            <div className="grid grid-cols-2 gap-1 max-w-xl">
-              {menu.items.map(item => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-start gap-3 rounded-xl p-3 hover:bg-white/6 transition-colors group"
-                >
-                  <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-blue-600/20 ring-1 ring-blue-500/25 group-hover:bg-blue-600/30 transition-colors">
-                    <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold text-white/90 group-hover:text-white transition-colors">{item.label}</div>
-                    {item.desc && <div className="text-[12px] text-white/55 mt-0.5 leading-snug">{item.desc}</div>}
-                  </div>
-                </Link>
-              ))}
+          <div className="mx-auto max-w-7xl px-8 py-3.5">
+            <div
+              className={cn(
+                'grid gap-x-1 gap-y-px',
+                menu.cols === 3 ? 'grid-cols-3 max-w-[640px]' : 'grid-cols-2 max-w-[430px]',
+              )}
+            >
+              {menu.items.map(item => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 hover:bg-white/5 transition-colors group"
+                  >
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 group-hover:bg-blue-600/15 group-hover:ring-blue-500/20 transition-colors">
+                      <Icon className="h-3.5 w-3.5 text-white/40 group-hover:text-blue-400 transition-colors" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-semibold text-white/85 group-hover:text-white transition-colors leading-tight">{item.label}</div>
+                      {item.desc && <div className="text-[11.5px] text-white/45 mt-px leading-snug truncate">{item.desc}</div>}
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Mobile menu */}
+      {/* ── Mobile menu ──────────────────────────────────────────────────── */}
       {mobileOpen && (
         <div className="lg:hidden bg-[#080f1e] border-t border-white/8">
           <div className="px-5 py-4 space-y-1">
             {(Object.keys(NAV_MENUS) as MenuKey[]).map(key => (
               <div key={key}>
-                <div className="px-3 py-2 text-[13px] font-semibold text-white/40 uppercase tracking-wider">
+                <div className="px-3 py-2 text-[11px] font-semibold text-white/35 uppercase tracking-wider">
                   {NAV_MENUS[key].label}
                 </div>
-                {NAV_MENUS[key].items.map(item => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="block px-3 py-2 text-[14px] font-medium text-white/70 hover:text-white transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {NAV_MENUS[key].items.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-[14px] font-medium text-white/65 hover:text-white transition-colors"
+                    >
+                      <Icon className="h-3.5 w-3.5 text-white/30 flex-shrink-0" />
+                      {item.label}
+                    </Link>
+                  )
+                })}
               </div>
             ))}
-            <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block px-3 py-2 text-[14px] font-medium text-white/70 hover:text-white">Pricing</Link>
+            <Link href="/pricing" onClick={() => setMobileOpen(false)} className="block px-3 py-2 text-[14px] font-medium text-white/65 hover:text-white">Pricing</Link>
           </div>
           <div className="px-5 pb-5 pt-3 border-t border-white/8 flex flex-col gap-2.5">
             <Link href="/auth/login" className="flex items-center justify-center rounded-lg border border-white/15 px-4 py-2.5 text-[14px] font-medium text-white/70 hover:text-white">
