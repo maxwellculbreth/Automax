@@ -39,6 +39,7 @@ export async function PUT(
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error(`PUT /api/quotes/${id}:`, err)
-    return NextResponse.json({ error: 'Failed to update quote' }, { status: 500 })
+    const detail = err instanceof Error ? err.message : JSON.stringify(err)
+    return NextResponse.json({ error: 'Failed to update quote', detail }, { status: 500 })
   }
 }
