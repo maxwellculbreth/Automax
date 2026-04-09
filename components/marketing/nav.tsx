@@ -178,13 +178,15 @@ export function MarketingNav() {
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_16px_48px_-8px_rgba(0,0,0,0.55)]"
+          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-8px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto max-w-7xl px-8 py-3.5">
+          <div className="mx-auto max-w-7xl px-8 py-5">
             <div
               className={cn(
-                'grid gap-x-1 gap-y-px',
-                menu.cols === 3 ? 'grid-cols-3 max-w-[640px]' : 'grid-cols-2 max-w-[430px]',
+                'grid',
+                menu.cols === 3
+                  ? 'grid-cols-3 gap-x-6 gap-y-0.5 max-w-[860px]'
+                  : 'grid-cols-2 gap-x-6 gap-y-0.5 max-w-[580px]',
               )}
             >
               {menu.items.map(item => {
@@ -193,14 +195,14 @@ export function MarketingNav() {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 hover:bg-white/5 transition-colors group"
+                    className="flex items-start gap-3.5 rounded-xl px-3.5 py-3 hover:bg-white/[0.05] transition-colors group"
                   >
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 group-hover:bg-blue-600/15 group-hover:ring-blue-500/20 transition-colors">
-                      <Icon className="h-3.5 w-3.5 text-white/40 group-hover:text-blue-400 transition-colors" />
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 group-hover:bg-blue-600/15 group-hover:ring-blue-500/25 transition-colors mt-0.5">
+                      <Icon className="h-4 w-4 text-white/40 group-hover:text-blue-400 transition-colors" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-semibold text-white/85 group-hover:text-white transition-colors leading-tight">{item.label}</div>
-                      {item.desc && <div className="text-[11.5px] text-white/45 mt-px leading-snug truncate">{item.desc}</div>}
+                    <div>
+                      <div className="text-[13.5px] font-semibold text-white/85 group-hover:text-white transition-colors leading-snug">{item.label}</div>
+                      {item.desc && <div className="text-[12px] text-white/40 mt-0.5 leading-snug">{item.desc}</div>}
                     </div>
                   </Link>
                 )
