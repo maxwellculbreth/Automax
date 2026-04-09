@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, FileText, User, AlignLeft, CreditCard,
   Trash2, Plus, LayoutTemplate, ChevronDown, Check,
-  Eye, Copy, Send, MessageSquare, Mail, X, Loader2,
+  Eye, Copy, Send, MessageSquare, Mail, X, Loader2, Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import type { Quote, QuoteItem, DiscountType, DepositType, QuoteStatus, QuoteTemplate } from '@/lib/types/quotes'
 import { QUOTE_TEMPLATES } from '@/lib/data/demo-quotes'
+import { ClientPicker } from '@/components/quotes/client-picker'
+import type { PickedClient } from '@/components/quotes/client-picker'
 
 interface QuoteFormProps {
   initialData?: Partial<Quote>
@@ -40,12 +42,34 @@ function makeEmptyItem(): QuoteItem {
   return { id: crypto.randomUUID(), name: '', description: '', quantity: 1, unit_price: 0, line_total: 0, position: 0 }
 }
 
+function computeExpiryDate(preset: string): string {
+  const days = parseInt(preset)
+  if (isNaN(days)) return ''
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+function detectExpiryPreset(isoDate: string): string {
+  const diff = Math.round((new Date(isoDate).getTime() - Date.now()) / 86400000)
+  if (diff <= 1) return '1'
+  if (diff >= 6 && diff <= 8) return '7'
+  if (diff >= 13 && diff <= 15) return '14'
+  if (diff >= 28 && diff <= 32) return '30'
+  if (diff >= 58 && diff <= 62) return '60'
+  return 'custom'
+}
+
 export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
   const router = useRouter()
 
   const [title,           setTitle]           = useState(initialData?.title || '')
   const [status,          setStatus]          = useState<QuoteStatus>(initialData?.status || 'draft')
-  const [expiresAt,       setExpiresAt]       = useState(initialData?.expires_at ? initialData.expires_at.split('T')[0] : '')
+  const [expiresAt,       setExpiresAt]       = useState(() => {
+    if (initialData?.expires_at) return initialData.expires_at.split('T')[0]
+    if (mode === 'create') return computeExpiryDate('30')
+    return ''
+  })
   const [salesperson,     setSalesperson]     = useState(initialData?.salesperson_name || '')
   const [customerName,    setCustomerName]    = useState(initialData?.customer_name || '')
   const [customerEmail,   setCustomerEmail]   = useState(initialData?.customer_email || '')
@@ -65,11 +89,16 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
   const [depositType,     setDepositType]     = useState<DepositType>(initialData?.deposit_type || 'fixed')
   const [depositAmount,   setDepositAmount]   = useState(initialData?.deposit_amount || 0)
 
-  const [showTemplates,  setShowTemplates]  = useState(false)
-  const [isSaving,       setIsSaving]       = useState(false)
-  const [savedStatus,    setSavedStatus]    = useState<'idle' | 'saved'>('idle')
-  const [showSendPanel,  setShowSendPanel]  = useState(false)
-  const [isSending,      setIsSending]      = useState(false)
+  const [showTemplates,   setShowTemplates]   = useState(false)
+  const [isSaving,        setIsSaving]        = useState(false)
+  const [savedStatus,     setSavedStatus]     = useState<'idle' | 'saved'>('idle')
+  const [showSendPanel,   setShowSendPanel]   = useState(false)
+  const [isSending,       setIsSending]       = useState(false)
+  const [showClientPicker, setShowClientPicker] = useState(false)
+  const [expiryPreset,    setExpiryPreset]    = useState<string>(() => {
+    if (!initialData?.expires_at) return mode === 'create' ? '30' : 'none'
+    return detectExpiryPreset(initialData.expires_at)
+  })
 
   const subtotal    = useMemo(() => items.reduce((s, i) => s + i.line_total, 0), [items])
   const discountAmt = useMemo(() => {
@@ -110,6 +139,22 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
     setItems(tpl.items.map(item => ({ ...item, id: crypto.randomUUID() })))
     if (!title) setTitle(tpl.name)
     setShowTemplates(false)
+  }
+
+  function handleClientSelect(client: PickedClient) {
+    setCustomerName(client.full_name)
+    if (client.phone) setCustomerPhone(client.phone)
+    if (client.email) setCustomerEmail(client.email)
+    if (client.address) setPropertyAddress(client.address)
+  }
+
+  function handleExpiryPresetChange(preset: string) {
+    setExpiryPreset(preset)
+    if (preset !== 'none' && preset !== 'custom') {
+      setExpiresAt(computeExpiryDate(preset))
+    } else if (preset === 'none') {
+      setExpiresAt('')
+    }
   }
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -351,8 +396,30 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[12px] font-medium">Expiration Date</Label>
-                  <Input type="date" className="h-9 text-[13px]" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
+                  <Label className="text-[12px] font-medium">Expires In</Label>
+                  <div className="flex gap-2">
+                    <select
+                      className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={expiryPreset}
+                      onChange={e => handleExpiryPresetChange(e.target.value)}
+                    >
+                      <option value="none">No expiry</option>
+                      <option value="1">1 day</option>
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                      <option value="60">60 days</option>
+                      <option value="custom">Custom date</option>
+                    </select>
+                    {expiryPreset === 'custom' && (
+                      <Input
+                        type="date"
+                        className="h-9 text-[13px] flex-1"
+                        value={expiresAt}
+                        onChange={e => setExpiresAt(e.target.value)}
+                      />
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[12px] font-medium">Salesperson</Label>
@@ -363,9 +430,19 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
 
             {/* Client Details */}
             <div className="rounded-xl border border-border bg-card">
-              <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-                <User className="h-[15px] w-[15px] text-muted-foreground" />
-                <span className="text-[13px] font-semibold text-foreground">Client Details</span>
+              <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+                <div className="flex items-center gap-2">
+                  <User className="h-[15px] w-[15px] text-muted-foreground" />
+                  <span className="text-[13px] font-semibold text-foreground">Client Details</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowClientPicker(true)}
+                  className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Select Client
+                </button>
               </div>
               <div className="p-5 grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
@@ -592,6 +669,12 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
           </div>
         </div>
       </div>
+
+      <ClientPicker
+        open={showClientPicker}
+        onOpenChange={setShowClientPicker}
+        onSelect={handleClientSelect}
+      />
     </div>
   )
 }

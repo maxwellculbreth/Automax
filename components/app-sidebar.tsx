@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Star,
   FileText,
+  Users,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -31,6 +32,7 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Quotes", href: "/quotes", icon: FileText },
+  { name: "Clients", href: "/clients", icon: Users },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
   { name: "Reviews",   href: "/reviews",   icon: Star,     pro: true },
