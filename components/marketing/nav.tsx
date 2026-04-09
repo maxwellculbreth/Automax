@@ -30,13 +30,13 @@ const NAV_MENUS: Record<string, NavMenu> = {
   },
   growth: {
     label: 'Growth',
-    cols: 2,
+    cols: 3,
     items: [
-      { label: 'Google Reviews',      desc: 'Automate review requests after every job', href: '#', icon: Star },
-      { label: 'Website Builder',     desc: 'Professional site built free for you',     href: '#', icon: Globe },
-      { label: 'Lead Capture',        desc: 'Convert website visitors into leads',      href: '#', icon: MousePointerClick },
-      { label: 'Follow-Up Campaigns', desc: 'Re-engage cold leads automatically',       href: '#', icon: Mail },
-      { label: 'Reputation Tools',    desc: 'Dominate local search and trust signals',  href: '#', icon: Shield },
+      { label: 'Google Reviews',      desc: 'Automate review requests after every job', href: '/growth/google-reviews',       icon: Star },
+      { label: 'Website Builder',     desc: 'Professional site built free for you',     href: '/growth/website-builder',      icon: Globe },
+      { label: 'Lead Capture',        desc: 'Convert website visitors into leads',      href: '/growth/lead-capture',         icon: MousePointerClick },
+      { label: 'Follow-Up Campaigns', desc: 'Re-engage cold leads automatically',       href: '/growth/follow-up-campaigns',  icon: Mail },
+      { label: 'Reputation Tools',    desc: 'Dominate local search and trust signals',  href: '/growth/reputation-tools',     icon: Shield },
     ],
   },
   automation: {

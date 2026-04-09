@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
   const isMarketingRoute =
     request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/pricing' ||
-    request.nextUrl.pathname.startsWith('/platform')
+    request.nextUrl.pathname.startsWith('/platform') ||
+    request.nextUrl.pathname.startsWith('/growth')
   const isPublicRoute = isAuthRoute || isMarketingRoute
 
   if (!user && !isPublicRoute) {
