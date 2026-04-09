@@ -117,9 +117,7 @@ export function DashboardKPIs({ range = "week", customRange, isCustom = false }:
               "mt-2.5 text-[26px] sm:text-[28px] font-bold tabular-nums tracking-tight leading-none",
               showAlert
                 ? "text-amber-600 dark:text-amber-400"
-                : (rawValue || 0) > 0 && kpi.accent === "emerald"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-foreground"
+                : "text-foreground"
             )}>
               {value}
             </p>

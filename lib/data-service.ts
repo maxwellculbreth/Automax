@@ -1535,11 +1535,12 @@ export async function updateAutomation(id: string, updates: AutomationUpdate): P
 // ----- Activities (uses Supabase "activity_log" table) -----
 
 // Type for Supabase activity_log table (matches actual schema)
-// Schema: id, company_id, lead_id, activity_type, title, description, created_at
+// Schema: id, company_id, lead_id, job_id, activity_type, title, description, created_at
 interface SupabaseActivity {
   id: string
   company_id: string
   lead_id?: string | null
+  job_id?: string | null
   activity_type?: string
   title?: string
   description?: string
@@ -1558,6 +1559,17 @@ function mapSupabaseActivityToActivity(activity: SupabaseActivity): Activity {
     metadata: null, // Column doesn't exist in schema
     created_at: activity.created_at,
   }
+}
+
+// Metadata shape stored on Activity for the dashboard feed.
+// All values come from live Supabase joins — never from stale description text.
+export interface ActivityFeedMeta {
+  lead_name?: string       // current customer_name from leads table
+  service_type?: string    // current service_type from leads table
+  quote_amount?: number    // current quote_amount from leads table
+  job_title?: string       // current title from jobs table
+  job_price?: number       // current price from jobs table
+  raw_title?: string       // activity_log.title (event label, generally clean)
 }
 
 export async function getActivities(limit = 20): Promise<Activity[]> {
@@ -1580,7 +1592,7 @@ export async function getActivities(limit = 20): Promise<Activity[]> {
 
   if (!data || data.length === 0) return []
 
-  // Collect unique lead IDs so we can fetch current names (avoids stale name in description)
+  // ── Collect unique IDs for batch joins ──────────────────────────────────
   const leadIds = [
     ...new Set(
       data
@@ -1588,26 +1600,59 @@ export async function getActivities(limit = 20): Promise<Activity[]> {
         .map((a: SupabaseActivity) => a.lead_id as string)
     ),
   ]
+  const jobIds = [
+    ...new Set(
+      data
+        .filter((a: SupabaseActivity) => a.job_id)
+        .map((a: SupabaseActivity) => a.job_id as string)
+    ),
+  ]
 
-  const leadNameMap: Record<string, string> = {}
+  // ── Fetch current lead data (names/service/amount are the live truth) ───
+  type LeadRow = { id: string; customer_name: string | null; service_type: string | null; quote_amount: number | null }
+  const leadMap: Record<string, LeadRow> = {}
   if (leadIds.length > 0) {
     const { data: leadsData } = await supabase
       .from("leads")
-      .select("id, customer_name")
+      .select("id, customer_name, service_type, quote_amount")
       .in("id", leadIds)
     if (leadsData) {
-      for (const l of leadsData) {
-        if (l.id && l.customer_name) leadNameMap[l.id] = l.customer_name
+      for (const l of leadsData as LeadRow[]) {
+        if (l.id) leadMap[l.id] = l
       }
     }
   }
 
+  // ── Fetch current job data ───────────────────────────────────────────────
+  type JobRow = { id: string; title: string | null; price: number | null }
+  const jobMap: Record<string, JobRow> = {}
+  if (jobIds.length > 0) {
+    const { data: jobsData } = await supabase
+      .from("jobs")
+      .select("id, title, price")
+      .in("id", jobIds)
+    if (jobsData) {
+      for (const j of jobsData as JobRow[]) {
+        if (j.id) jobMap[j.id] = j
+      }
+    }
+  }
+
+  // ── Build activities with rich live metadata ─────────────────────────────
   return data.map((activity: SupabaseActivity) => {
     const mapped = mapSupabaseActivityToActivity(activity)
-    // Inject current lead name so the feed always shows up-to-date names
-    if (activity.lead_id && leadNameMap[activity.lead_id]) {
-      mapped.metadata = { lead_name: leadNameMap[activity.lead_id] }
+    const lead = activity.lead_id ? leadMap[activity.lead_id] : null
+    const job  = activity.job_id  ? jobMap[activity.job_id]   : null
+
+    const meta: ActivityFeedMeta = {
+      lead_name:    lead?.customer_name  ?? undefined,
+      service_type: lead?.service_type   ?? undefined,
+      quote_amount: lead?.quote_amount   ?? undefined,
+      job_title:    job?.title           ?? undefined,
+      job_price:    job?.price           ?? undefined,
+      raw_title:    activity.title       ?? undefined,
     }
+    mapped.metadata = meta as unknown as Activity["metadata"]
     return mapped
   })
 }
