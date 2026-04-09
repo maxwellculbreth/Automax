@@ -17,8 +17,7 @@ import {
   Mail,
   MoreVertical,
   Sparkles,
-  PanelRightClose,
-  PanelRightOpen,
+  SlidersHorizontal,
   FileText,
   CalendarCheck,
   XCircle,
@@ -124,8 +123,8 @@ export function ConversationPanel({
   return (
     <div className="flex-1 flex flex-col bg-background min-w-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b border-border bg-card">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 border-b border-border bg-card">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
             <span className="text-[11px] sm:text-[12px] font-semibold text-background">
               {(lead.name || "?").split(" ").map((n) => n[0] || "").join("").slice(0, 2) || "?"}
@@ -133,7 +132,9 @@ export function ConversationPanel({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[13px] sm:text-[14px] font-semibold text-foreground truncate max-w-[140px] sm:max-w-none">{lead.name || "Unknown"}</h2>
+              <h2 className="text-[13px] sm:text-[14px] font-semibold text-foreground truncate max-w-[140px] sm:max-w-[240px]">
+                {lead.name || "Unknown"}
+              </h2>
               <span
                 className={cn(
                   "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border flex-shrink-0",
@@ -145,28 +146,36 @@ export function ConversationPanel({
             </div>
             <div className="flex items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground">
               <span className="truncate max-w-[100px] sm:max-w-none">{lead.service || "Service not specified"}</span>
-              <span className="hidden sm:inline">·</span>
-              <span className="hidden sm:inline font-medium text-foreground">
-                {lead.estimated_value ? formatCurrency(lead.estimated_value) : "-"}
-              </span>
+              {lead.estimated_value ? (
+                <>
+                  <span className="hidden sm:inline">·</span>
+                  <span className="hidden sm:inline font-medium text-foreground">
+                    {formatCurrency(lead.estimated_value)}
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-            <a href={`tel:${lead.phone}`}>
-              <Phone className="h-4 w-4" />
-            </a>
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-            <a href={`mailto:${lead.email}`}>
-              <Mail className="h-4 w-4" />
-            </a>
-          </Button>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {lead.phone && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" asChild>
+              <a href={`tel:${lead.phone}`}>
+                <Phone className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
+          {lead.email && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" asChild>
+              <a href={`mailto:${lead.email}`}>
+                <Mail className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -179,9 +188,9 @@ export function ConversationPanel({
                 <FileText className="h-4 w-4 mr-2" />
                 Send Quote
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-[13px]" onClick={() => handleStatusChange("booked")}>
+              <DropdownMenuItem className="text-[13px]" onClick={() => handleStatusChange("scheduled")}>
                 <CalendarCheck className="h-4 w-4 mr-2" />
-                Mark Booked
+                Book Job
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-[13px] text-destructive" onClick={() => handleStatusChange("lost")}>
@@ -190,17 +199,15 @@ export function ConversationPanel({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Details toggle — clearly labeled, desktop only */}
           <Button
-            variant="ghost"
-            size="icon"
+            variant={showDetails ? "secondary" : "ghost"}
+            size="sm"
             onClick={onToggleDetails}
-            className="hidden lg:flex h-8 w-8"
+            className="hidden lg:flex h-8 px-2.5 gap-1.5 text-[12px] text-muted-foreground hover:text-foreground"
           >
-            {showDetails ? (
-              <PanelRightClose className="h-4 w-4" />
-            ) : (
-              <PanelRightOpen className="h-4 w-4" />
-            )}
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Details</span>
           </Button>
         </div>
       </div>
@@ -278,7 +285,7 @@ export function ConversationPanel({
       </div>
 
       {/* AI Suggestion */}
-      {showAISuggestion && lead.status !== "booked" && lead.status !== "lost" && (
+      {showAISuggestion && lead.status !== "scheduled" && lead.status !== "completed" && lead.status !== "lost" && (
         <div className="px-3 sm:px-4 pb-2">
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10 p-3">
             <div className="flex items-center justify-between mb-2">
@@ -352,7 +359,7 @@ export function ConversationPanel({
             <FileText className="h-3 w-3 mr-1" />
             Send Quote
           </Button>
-          <Button variant="outline" size="sm" className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none" onClick={() => handleStatusChange("booked")}>
+          <Button variant="outline" size="sm" className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none" onClick={() => handleStatusChange("scheduled")}>
             <CalendarCheck className="h-3 w-3 mr-1" />
             Book Job
           </Button>

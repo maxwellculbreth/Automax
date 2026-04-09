@@ -4,12 +4,13 @@ import React, { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Users, UserCheck, UserPlus, TrendingUp,
-  Search, Plus, Loader2, Phone, Mail, ChevronRight,
+  Search, Plus, Loader2, Phone, Mail, ChevronRight, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { AddClientDialog } from '@/components/clients/add-client-dialog'
+import { ImportClientsDialog } from '@/components/clients/import-clients-dialog'
 
 interface Client {
   id: string
@@ -62,7 +63,8 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showAdd, setShowAdd]     = useState(false)
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const load = () => {
     setIsLoading(true)
@@ -120,14 +122,25 @@ export default function ClientsPage() {
             <h1 className="text-[17px] font-bold text-foreground">Clients</h1>
             <p className="text-[12px] text-muted-foreground mt-0.5">Manage your client relationships</p>
           </div>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[13px]"
-            onClick={() => setShowAdd(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New Client
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-[13px] font-semibold"
+              onClick={() => setShowImport(true)}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Import List
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[13px]"
+              onClick={() => setShowAdd(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Client
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -336,6 +349,12 @@ export default function ClientsPage() {
       </div>
 
       <AddClientDialog open={showAdd} onOpenChange={setShowAdd} onCreated={load} />
+      <ImportClientsDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        onImported={load}
+        existingClients={clients}
+      />
     </div>
   )
 }

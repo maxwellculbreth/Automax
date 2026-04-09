@@ -1282,6 +1282,104 @@ async function createJobFromLead(lead: SupabaseLead, companyId: string): Promise
   }
 }
 
+// If this lead already has a linked client row, keep its fields in sync with the latest lead data.
+// This fixes stale rows where customer_name or contact info drifted after the client was created.
+async function refreshLinkedClient(lead: SupabaseLead, companyId: string): Promise<void> {
+  const supabase = createClient()
+  const { data: existing } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("lead_id", lead.id)
+    .maybeSingle()
+
+  if (!existing) return
+
+  await supabase
+    .from("clients")
+    .update({
+      full_name: lead.customer_name || "Unknown",
+      phone: lead.phone || null,
+      email: lead.email || null,
+      address: lead.address || null,
+      source: lead.source || null,
+      last_activity_at: lead.updated_at ?? new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", existing.id)
+    .eq("company_id", companyId)
+}
+
+// Create or update a client record when a lead reaches "completed" status.
+// Dedup order: lead_id → email → phone. Never creates duplicates.
+async function syncLeadToClient(lead: SupabaseLead, companyId: string): Promise<void> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+  const lastActivity = lead.completed_at ?? lead.updated_at ?? now
+
+  const clientFields = {
+    company_id: companyId,
+    lead_id: lead.id,
+    full_name: lead.customer_name || "Unknown",
+    phone: lead.phone || null,
+    email: lead.email || null,
+    address: lead.address || null,
+    source: lead.source || null,
+    status: "active" as const,
+    last_activity_at: lastActivity,
+    updated_at: now,
+  }
+
+  // 1. Match by lead_id
+  const { data: byLeadId } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("lead_id", lead.id)
+    .maybeSingle()
+
+  if (byLeadId) {
+    await supabase.from("clients").update(clientFields).eq("id", byLeadId.id).eq("company_id", companyId)
+    return
+  }
+
+  // 2. Match by email
+  if (lead.email) {
+    const { data: byEmail } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("email", lead.email)
+      .maybeSingle()
+
+    if (byEmail) {
+      await supabase.from("clients").update(clientFields).eq("id", byEmail.id).eq("company_id", companyId)
+      return
+    }
+  }
+
+  // 3. Match by phone
+  if (lead.phone) {
+    const { data: byPhone } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("phone", lead.phone)
+      .maybeSingle()
+
+    if (byPhone) {
+      await supabase.from("clients").update(clientFields).eq("id", byPhone.id).eq("company_id", companyId)
+      return
+    }
+  }
+
+  // 4. No match — insert new client
+  const { error } = await supabase.from("clients").insert({ ...clientFields, created_at: now })
+  if (error) {
+    console.error("Error creating client from lead:", error)
+  }
+}
+
 export async function updateLead(id: string, updates: LeadUpdate & { completed_at?: string }): Promise<Lead | null> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
@@ -1344,7 +1442,7 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
     })
   }
 
-  // If status changed to "completed", log job completion
+  // If status changed to "completed", log job completion and sync to clients
   if (normalizedStatus === "completed") {
     await logActivity({
       lead_id: updatedLead.id,
@@ -1353,6 +1451,12 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
       title: "Job completed",
       description: `${leadName} - ${updatedLead.service_type || "Service"} completed for $${updatedLead.quote_amount || 0}`,
     })
+    await syncLeadToClient(updatedLead, companyId)
+  }
+
+  // Keep any existing linked client row up to date (fixes stale name/contact info)
+  if (normalizedStatus !== "completed") {
+    await refreshLinkedClient(updatedLead, companyId)
   }
 
   return mapSupabaseLeadToLead(updatedLead)
@@ -2307,13 +2411,34 @@ export function formatRelativeTime(date: string | Date): string {
 
 export interface FinanceTransaction {
   id: string
-  date: string              // ISO string
+  date: string
   type: "income" | "expense"
-  category: string          // service_type or expense category key
-  description: string       // label for display
-  client: string            // customer_name or vendor
+  source_type: "manual" | "synced"
+  category: string
+  description: string
+  client: string
   amount: number
   status: "collected" | "scheduled" | "pending" | "cleared"
+  payment_method?: string | null
+  editable: boolean
+  deletable: boolean
+  raw_expense_id?: string        // set when sourced from expenses table
+  raw_transaction_id?: string    // set when sourced from transactions table
+  lead_id?: string               // set for synced income rows
+}
+
+// Manual transaction insert shape (mirrors transactions DB table)
+export interface TransactionInsert {
+  type: "income" | "expense"
+  category?: string | null
+  description?: string | null
+  amount: number
+  transaction_date: string   // YYYY-MM-DD
+  payment_method?: string | null
+  status?: string | null
+  client_id?: string | null
+  lead_id?: string | null
+  source_type?: string
 }
 
 export interface FinanceChartBar {
@@ -2488,6 +2613,34 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     ])
   )
 
+  // Fetch manual transactions in range (income + expense entered via Finance UI)
+  const { data: manualTxRaw, error: manualTxError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("transaction_date", startDateStr)
+    .lt("transaction_date", endDateStr)
+    .order("transaction_date", { ascending: false })
+
+  if (manualTxError) {
+    console.error("Error fetching manual transactions:", manualTxError.message,
+      "— Run the SQL migration in supabase/migrations/20260409_add_transactions.sql if table is missing.")
+  }
+
+  const manualTransactions = (manualTxRaw || []) as {
+    id: string; type: string; source_type: string; category: string | null
+    description: string | null; amount: number; transaction_date: string
+    payment_method: string | null; status: string | null; client_id: string | null
+    editable: boolean; deletable: boolean
+  }[]
+
+  const manualIncome = manualTransactions
+    .filter(t => t.type === "income")
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+  const manualExpenseAmount = manualTransactions
+    .filter(t => t.type === "expense")
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+
   // Fetch recent activity
   const { data: activities, error: activitiesError } = await supabase
     .from("activity_log")
@@ -2522,18 +2675,26 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   // Revenue-bearing leads in range (scheduled + completed)
   const scheduledLeads = rangeLeads.filter(l => isScheduledStatus(l.status))
   const completedLeads = rangeLeads.filter(l => isCompletedStatus(l.status))
-  const scheduledRevenue = scheduledLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  const collectedRevenue = completedLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  const totalRevenue = scheduledRevenue + collectedRevenue
-  const outstandingAmount = scheduledRevenue
+  const leadScheduledRevenue = scheduledLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
+  const leadCollectedRevenue = completedLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
+  const outstandingAmount = leadScheduledRevenue
   const outstandingCount = scheduledLeads.length
   const jobCount = scheduledLeads.length + completedLeads.length
-  const avgJobSize = jobCount > 0 ? Math.round(totalRevenue / jobCount) : 0
 
-  // Real expenses from DB
-  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  // Combined revenue: lead/job revenue + manual income from transactions table
+  const manualIncomeCount = manualTransactions.filter(t => t.type === "income").length
+  const scheduledRevenue = leadScheduledRevenue
+  const collectedRevenue = leadCollectedRevenue + manualIncome  // manual income counts as collected
+  const totalRevenue = scheduledRevenue + collectedRevenue      // full picture
+  const totalJobCount = jobCount + manualIncomeCount
+  const avgJobSize = totalJobCount > 0 ? Math.round(totalRevenue / totalJobCount) : 0
+
+  // Expenses from DB + manual expense entries from transactions table
+  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) + manualExpenseAmount
   const grossProfit = totalRevenue - totalExpenses
-  const profitMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0
+  const profitMargin = totalRevenue > 0
+    ? Math.round((grossProfit / totalRevenue) * 100)
+    : 0
 
   // Expenses grouped by category
   const categoryMap = new Map<string, { label: string; amount: number; count: number }>()
@@ -2581,37 +2742,65 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // Income transactions — scheduled + completed leads in range
+  // Income transactions — scheduled + completed leads in range (synced, read-only)
   const incomeTransactions: FinanceTransaction[] = rangeLeads
     .filter(l => isScheduledStatus(l.status) || isCompletedStatus(l.status))
     .map(l => ({
       id: l.id,
       date: edFn(l).toISOString(),
       type: "income" as const,
+      source_type: "synced" as const,
       category: l.service_type || "Service",
       description: l.service_type || "Job",
       client: l.customer_name || "Client",
       amount: l.quote_amount || 0,
       status: isCompletedStatus(l.status) ? "collected" as const : "scheduled" as const,
+      editable: false,
+      deletable: false,
+      lead_id: l.id,
     }))
 
-  // Expense transactions from real DB rows
+  // Expense transactions from real DB rows (manual, fully editable)
   const expenseTransactions: FinanceTransaction[] = rangeExpenses.map(e => ({
     id: e.id,
     date: e.expense_date
       ? new Date(e.expense_date + "T00:00:00").toISOString()
       : e.created_at,
     type: "expense" as const,
+    source_type: "manual" as const,
     category: e.expense_categories?.key || "uncategorized",
     description: e.description || e.expense_categories?.label || "Expense",
     client: e.vendor || "—",
     amount: e.amount || 0,
     status: (e.status as "pending" | "cleared") || "pending",
+    editable: true,
+    deletable: true,
+    raw_expense_id: e.id,
+  }))
+
+  // Manual transaction rows (income or expense entered via Finance UI)
+  const manualTxTransactions: FinanceTransaction[] = manualTransactions.map(t => ({
+    id: t.id,
+    date: new Date(t.transaction_date + "T00:00:00").toISOString(),
+    type: t.type as "income" | "expense",
+    source_type: "manual" as const,
+    category: t.category || (t.type === "income" ? "Income" : "Expense"),
+    description: t.description || (t.type === "income" ? "Manual income" : "Manual expense"),
+    client: "—",
+    amount: t.amount || 0,
+    status: (t.status as "pending" | "cleared" | "collected") || (t.type === "income" ? "collected" : "cleared"),
+    payment_method: t.payment_method || null,
+    editable: t.editable,
+    deletable: t.deletable,
+    raw_transaction_id: t.id,
   }))
 
   // All transactions sorted newest first
-  const periodTransactions: FinanceTransaction[] = [...incomeTransactions, ...expenseTransactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const periodTransactions: FinanceTransaction[] = [
+    ...incomeTransactions,
+    ...expenseTransactions,
+    ...manualTxTransactions,
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   // Chart data bucketed by period
   const chartData = buildFinanceChartData(allLeads, rangeExpenses, range, rangeStart, rangeEnd)
@@ -2664,5 +2853,145 @@ export async function createExpense(expense: ExpenseInsert): Promise<boolean> {
     console.error("Error creating expense:", error)
     return false
   }
+  await logActivity({
+    company_id: companyId,
+    activity_type: "expense_added",
+    title: "Expense added",
+    description: `Expense — ${expense.description || "Expense"} for $${expense.amount}`,
+  })
+  return true
+}
+
+export async function updateExpense(id: string, updates: Partial<ExpenseInsert>): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("expenses")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId)
+  if (error) { console.error("Error updating expense:", error); return false }
+  return true
+}
+
+export async function deleteExpense(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+  if (error) { console.error("Error deleting expense:", error); return false }
+  return true
+}
+
+// Create a completed lead/job record from a manual income entry.
+// Called when the user opts into CRM syncing from the Add Income modal.
+export async function createCompletedLeadFromIncome(params: {
+  customerName: string
+  serviceType: string
+  amount: number
+  transactionDate: string // YYYY-MM-DD
+  description?: string | null
+}): Promise<string | null> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return null
+
+  const now = new Date().toISOString()
+  const completedAt = new Date(params.transactionDate + "T12:00:00").toISOString()
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      company_id: companyId,
+      customer_name: params.customerName || "Manual Entry",
+      phone: "",
+      service_type: params.serviceType || "Other",
+      status: "completed",
+      quote_amount: params.amount,
+      source: "manual_income",
+      message: params.description || null,
+      completed_at: completedAt,
+      created_at: now,
+      updated_at: now,
+    })
+    .select("id")
+    .single()
+
+  if (error) {
+    console.error("Error creating completed lead from income:", error)
+    return null
+  }
+
+  const leadId = (data as { id: string }).id
+
+  await logActivity({
+    lead_id: leadId,
+    company_id: companyId,
+    activity_type: "job_completed",
+    title: "Job completed (from manual income)",
+    description: `${params.customerName || "Manual Entry"} — ${params.serviceType || "Service"} completed for $${params.amount}`,
+  })
+
+  return leadId
+}
+
+export async function createTransaction(tx: TransactionInsert): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from("transactions")
+    .insert({
+      ...tx,
+      company_id: companyId,
+      created_by: user?.id ?? null,
+      source_type: tx.source_type ?? "manual",
+      editable: true,
+      deletable: true,
+    })
+  if (error) { console.error("Error creating transaction:", error); return false }
+  // Log to activity feed
+  await logActivity({
+    company_id: companyId,
+    activity_type: tx.type === "income" ? "income_added" : "expense_added",
+    title: tx.type === "income" ? "Manual income added" : "Manual expense added",
+    description: tx.type === "income"
+      ? `Manual income — ${tx.category || "Income"} for $${tx.amount}`
+      : `Expense — ${tx.description || tx.category || "Expense"} for $${tx.amount}`,
+  })
+  return true
+}
+
+export async function updateTransaction(id: string, updates: Partial<TransactionInsert>): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("transactions")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("editable", true)
+  if (error) { console.error("Error updating transaction:", error); return false }
+  return true
+}
+
+export async function deleteTransaction(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("deletable", true)
+  if (error) { console.error("Error deleting transaction:", error); return false }
   return true
 }

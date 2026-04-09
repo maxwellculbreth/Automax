@@ -15,7 +15,7 @@ export default function LeadsPage() {
   const { leads, isLoading } = useLeads()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [showDetails, setShowDetails] = useState(true)
+  const [showDetails, setShowDetails] = useState(false)
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list")
 
   // Select first lead when data loads

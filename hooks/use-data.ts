@@ -35,6 +35,11 @@ import {
   getFinanceData,
   getExpenseCategories,
   createExpense,
+  updateExpense,
+  deleteExpense,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
   type Lead,
   type Message,
   type ScheduledMessage,
@@ -51,6 +56,7 @@ import {
   type DateRangeKey,
   type CustomDateRange,
   type ExpenseCategory,
+  type TransactionInsert,
 } from "@/lib/data-service"
 import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert, ScheduledMessageInsert } from "@/lib/database.types"
 
@@ -515,24 +521,80 @@ export function useExpenseCategories() {
   }
 }
 
+// Shared invalidation helper for all finance mutations
+const invalidateFinance = () => {
+  const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
+  return Promise.all(ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true })))
+}
+
 export function useCreateExpense() {
   const { trigger, isMutating } = useSWRMutation(
     "create-expense",
     async (_key: string, { arg }: { arg: ExpenseInsert }) => {
       const success = await createExpense(arg)
-      if (success) {
-        // Invalidate all finance-data range keys so the Finance page re-fetches
-        const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
-        await Promise.all(
-          ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true }))
-        )
-      }
+      if (success) await invalidateFinance()
       return success
     }
   )
+  return { createExpense: trigger, isCreating: isMutating }
+}
 
-  return {
-    createExpense: trigger,
-    isCreating: isMutating,
-  }
+export function useUpdateExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "update-expense",
+    async (_key: string, { arg }: { arg: { id: string; updates: Partial<ExpenseInsert> } }) => {
+      const success = await updateExpense(arg.id, arg.updates)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { updateExpense: trigger, isUpdating: isMutating }
+}
+
+export function useDeleteExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "delete-expense",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteExpense(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { deleteExpense: trigger, isDeleting: isMutating }
+}
+
+export function useCreateTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "create-transaction",
+    async (_key: string, { arg }: { arg: TransactionInsert }) => {
+      const success = await createTransaction(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { createTransaction: trigger, isCreating: isMutating }
+}
+
+export function useUpdateTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "update-transaction",
+    async (_key: string, { arg }: { arg: { id: string; updates: Partial<TransactionInsert> } }) => {
+      const success = await updateTransaction(arg.id, arg.updates)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { updateTransaction: trigger, isUpdating: isMutating }
+}
+
+export function useDeleteTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "delete-transaction",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteTransaction(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { deleteTransaction: trigger, isDeleting: isMutating }
 }
