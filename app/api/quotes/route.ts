@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ quote }, { status: 201 })
   } catch (err) {
     console.error('POST /api/quotes:', err)
-    return NextResponse.json({ error: 'Failed to create quote' }, { status: 500 })
+    const detail = err instanceof Error ? err.message : JSON.stringify(err)
+    return NextResponse.json({ error: 'Failed to create quote', detail }, { status: 500 })
   }
 }
