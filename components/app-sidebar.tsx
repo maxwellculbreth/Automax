@@ -20,6 +20,7 @@ import {
   Star,
   FileText,
   Users,
+  ShieldCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -35,7 +36,8 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
-  { name: "Reviews",   href: "/reviews",   icon: Star,     pro: true },
+  { name: "Reviews",    href: "/reviews",    icon: Star,         pro: true },
+  { name: "Reputation", href: "/reputation", icon: ShieldCheck,  pro: true },
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
   { name: "Autome", href: "/autome", icon: Sparkles, max: true },

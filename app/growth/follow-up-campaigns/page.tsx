@@ -115,13 +115,13 @@ export default function FollowUpCampaignsPage() {
               <div>
                 <div className="mb-5"><SectionLabel>Growth · Follow-Up Campaigns</SectionLabel></div>
                 <h1 className="text-[38px] sm:text-[50px] lg:text-[56px] font-bold leading-[1.07] tracking-tight text-white mb-6">
-                  Your best jobs are<br />
+                  Close cold leads.<br />
                   <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-                    the ones you almost lost.
+                    Without chasing them.
                   </span>
                 </h1>
                 <p className="text-[17px] text-white/55 leading-relaxed max-w-[460px] mb-8">
-                  Automax sends smart, timed follow-up sequences on every quote — automatically re-engaging cold leads and getting responses without you lifting a finger.
+                  Automax automatically follows up on every open quote — sending timed, personalized messages that re-engage cold leads and win back jobs you&apos;d otherwise lose, without you writing a single word.
                 </p>
                 <div className="flex flex-wrap gap-3 mb-9">
                   <Link href="/auth/sign-up" className={BLUE_BTN}>

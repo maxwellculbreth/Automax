@@ -121,13 +121,13 @@ export default function GoogleReviewsPage() {
               <div>
                 <div className="mb-5"><SectionLabel>Growth · Google Reviews</SectionLabel></div>
                 <h1 className="text-[38px] sm:text-[50px] lg:text-[56px] font-bold leading-[1.07] tracking-tight text-white mb-6">
-                  Your best clients<br />
+                  More 5-star reviews.<br />
                   <span className="bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">
-                    already love you.
+                    Every single month.
                   </span>
                 </h1>
                 <p className="text-[17px] text-white/55 leading-relaxed max-w-[460px] mb-8">
-                  Automax automatically requests a Google review after every completed job — building your reputation on autopilot while you focus on the work.
+                  Automax automatically sends a review request after every completed job — growing your Google rating consistently, month after month, with zero manual follow-up.
                 </p>
                 <div className="flex flex-wrap gap-3 mb-9">
                   <Link href="/auth/sign-up" className={BLUE_BTN}>
