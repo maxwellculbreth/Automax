@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, ArrowRight, Zap } from 'lucide-react'
 import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
+import { MarketingShell } from '@/components/marketing/marketing-shell'
 import { cn } from '@/lib/utils'
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false)
 
   return (
+    <MarketingShell>
     <div className="bg-background">
       <MarketingNav />
 
@@ -192,14 +194,19 @@ export default function PricingPage() {
                 >
                   {/* Badge */}
                   {plan.badge && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
                       <div className={cn(
                         'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider',
                         plan.highlight
                           ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_4px_14px_rgba(59,130,246,0.4)]'
-                          : 'bg-muted text-muted-foreground border border-border',
+                          : 'bg-gradient-to-r from-amber-950/90 to-yellow-950/90 border border-amber-500/40 text-amber-300 shadow-[0_2px_12px_rgba(245,158,11,0.18)]',
                       )}>
                         {plan.highlight && <Zap className="h-3 w-3" />}
+                        {!plan.highlight && (
+                          <svg className="h-3 w-3 fill-amber-400" viewBox="0 0 12 12">
+                            <path d="M6 1l1.12 3.45H11l-2.94 2.14 1.12 3.45L6 8l-3.18 2.04 1.12-3.45L.94 4.45H4.88z"/>
+                          </svg>
+                        )}
                         {plan.badge}
                       </div>
                     </div>
@@ -208,10 +215,10 @@ export default function PricingPage() {
                   <div className="p-7 flex flex-col flex-1">
                     {/* Plan header */}
                     <div className="mb-6">
-                      <h2 className={cn('text-[18px] font-bold mb-1', plan.highlight ? 'text-white' : 'text-foreground')}>
+                      <h2 className="text-[18px] font-bold mb-1 text-white">
                         {plan.name}
                       </h2>
-                      <p className={cn('text-[13px]', plan.highlight ? 'text-white/50' : 'text-muted-foreground')}>
+                      <p className={cn('text-[13px]', plan.highlight ? 'text-white/60' : 'text-white/50')}>
                         {plan.tagline}
                       </p>
                     </div>
@@ -219,20 +226,20 @@ export default function PricingPage() {
                     {/* Price */}
                     <div className="mb-2">
                       <div className="flex items-end gap-1">
-                        <span className={cn('text-[48px] font-bold tracking-tight leading-none', plan.highlight ? 'text-white' : 'text-foreground')}>
+                        <span className="text-[48px] font-bold tracking-tight leading-none text-white">
                           ${price}
                         </span>
-                        <span className={cn('text-[14px] mb-2', plan.highlight ? 'text-white/40' : 'text-muted-foreground')}>
+                        <span className={cn('text-[14px] mb-2', plan.highlight ? 'text-white/45' : 'text-white/40')}>
                           /mo
                         </span>
                       </div>
                       {annual && (
-                        <div className={cn('text-[12px] mt-1', plan.highlight ? 'text-white/35' : 'text-muted-foreground')}>
+                        <div className={cn('text-[12px] mt-1', plan.highlight ? 'text-white/40' : 'text-white/35')}>
                           ${plan.annualTotal.toLocaleString()}/year · billed annually
                         </div>
                       )}
                       {!annual && (
-                        <div className={cn('text-[12px] mt-1', plan.highlight ? 'text-white/35' : 'text-muted-foreground')}>
+                        <div className={cn('text-[12px] mt-1', plan.highlight ? 'text-white/40' : 'text-white/35')}>
                           Or ${plan.annualMonthly}/mo billed annually
                         </div>
                       )}
@@ -256,7 +263,7 @@ export default function PricingPage() {
                       ) : (
                         <Link
                           href="/auth/sign-up"
-                          className="flex items-center justify-center gap-2 w-full rounded-xl border border-border bg-background px-5 py-3 text-[14px] font-semibold text-foreground hover:border-blue-500/40 hover:bg-blue-500/5 hover:text-blue-600 transition-all"
+                          className="flex items-center justify-center gap-2 w-full rounded-xl border border-white/15 bg-white/6 px-5 py-3 text-[14px] font-semibold text-white/85 hover:border-blue-400/50 hover:bg-blue-500/10 hover:text-white transition-all"
                         >
                           {plan.cta} <ArrowRight className="h-4 w-4" />
                         </Link>
@@ -270,15 +277,10 @@ export default function PricingPage() {
                     <ul className="space-y-3 flex-1">
                       {plan.features.map(feature => (
                         <li key={feature} className="flex items-start gap-3">
-                          <span className={cn(
-                            'mt-0.5 flex h-4.5 w-4.5 flex-shrink-0 items-center justify-center rounded-full',
-                            plan.highlight
-                              ? 'bg-blue-500/20 ring-1 ring-blue-500/30'
-                              : 'bg-blue-500/10 ring-1 ring-blue-500/15',
-                          )}>
-                            <Check className={cn('h-2.5 w-2.5', plan.highlight ? 'text-blue-300' : 'text-blue-600')} />
+                          <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-blue-500/20 ring-1 ring-blue-400/30">
+                            <Check className="h-2.5 w-2.5 text-blue-300" />
                           </span>
-                          <span className={cn('text-[13px]', plan.highlight ? 'text-white/70' : 'text-foreground/80')}>
+                          <span className={cn('text-[13px] leading-snug', plan.highlight ? 'text-white/85' : 'text-white/75')}>
                             {feature}
                           </span>
                         </li>
@@ -291,8 +293,8 @@ export default function PricingPage() {
           </div>
 
           {/* Guarantee note */}
-          <p className="text-center text-[13px] text-muted-foreground mt-8">
-            All plans include a <strong>14-day free trial</strong> — no credit card required. Cancel or change plans anytime.
+          <p className="text-center text-[13px] text-white/45 mt-8">
+            All plans include a <strong className="text-white/65 font-semibold">14-day free trial</strong> — no credit card required. Cancel or change plans anytime.
           </p>
         </div>
       </section>
@@ -362,5 +364,6 @@ export default function PricingPage() {
 
       <MarketingFooter />
     </div>
+    </MarketingShell>
   )
 }

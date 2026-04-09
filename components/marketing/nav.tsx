@@ -8,61 +8,50 @@ import { cn } from '@/lib/utils'
 const NAV_MENUS = {
   platform: {
     label: 'Platform',
-    cols: 2,
     items: [
-      { label: 'CRM Overview',       desc: 'Your full business operation in one place', href: '#' },
-      { label: 'Lead Inbox',         desc: 'Capture and respond to every inbound lead',  href: '#' },
-      { label: 'Pipeline & Jobs',    desc: 'Move jobs from quote to closed',             href: '#' },
-      { label: 'Quotes & Payments',  desc: 'Send professional quotes in minutes',        href: '#' },
-      { label: 'Clients',            desc: 'Manage relationships and history',           href: '#' },
-      { label: 'Business Dashboard', desc: 'Revenue, jobs, and KPIs at a glance',        href: '#' },
+      { label: 'CRM Overview',      desc: 'Your full business in one place',       href: '#' },
+      { label: 'Lead Inbox',        desc: 'Capture and respond instantly',         href: '#' },
+      { label: 'Quotes & Payments', desc: 'Send professional quotes in minutes',   href: '#' },
+      { label: 'Clients',           desc: 'Manage relationships and history',      href: '#' },
+      { label: 'Dashboard',         desc: 'Revenue, jobs, and KPIs at a glance',   href: '#' },
     ],
   },
   growth: {
     label: 'Growth',
-    cols: 2,
     items: [
-      { label: 'Google Reviews Automation', desc: 'Request and manage reviews automatically', href: '#' },
-      { label: 'Website Builder',           desc: 'Professional site built for you, free',    href: '#' },
-      { label: 'Lead Capture',              desc: 'Convert website visitors into leads',      href: '#' },
-      { label: 'Follow-Up Campaigns',       desc: 'Re-engage past customers automatically',   href: '#' },
-      { label: 'Referral Growth',           desc: 'Turn happy clients into new business',     href: '#' },
-      { label: 'Local Reputation Tools',    desc: 'Build trust in your service area',         href: '#' },
+      { label: 'Google Reviews',    desc: 'Automate review requests after every job', href: '#' },
+      { label: 'Website Builder',   desc: 'Professional site built free for you',     href: '#' },
+      { label: 'Lead Capture',      desc: 'Convert website visitors into leads',      href: '#' },
+      { label: 'Follow-Up Campaigns', desc: 'Re-engage cold leads automatically',     href: '#' },
+      { label: 'Reputation Tools',  desc: 'Dominate local search and trust signals',  href: '#' },
     ],
   },
   automation: {
     label: 'Automation',
-    cols: 2,
     items: [
-      { label: 'AI Assistant',           desc: 'AI that qualifies leads and drafts replies', href: '#' },
-      { label: 'Smart Follow-Ups',       desc: 'Never let a lead go cold',                  href: '#' },
-      { label: 'Automated Scheduling',   desc: 'Book jobs without the back-and-forth',      href: '#' },
-      { label: 'Quote Reminders',        desc: 'Close more with timely nudges',              href: '#' },
-      { label: 'Workflow Automation',    desc: 'Build custom trigger-action sequences',      href: '#' },
-      { label: 'Revenue Insights',       desc: 'Forecast and track growth over time',        href: '#' },
+      { label: 'AI Assistant',        desc: 'Qualifies leads and drafts replies',     href: '#' },
+      { label: 'Smart Follow-Ups',    desc: 'Never let a lead go cold again',         href: '#' },
+      { label: 'Scheduling',          desc: 'Book jobs without the back-and-forth',   href: '#' },
+      { label: 'Workflow Automation', desc: 'Build custom trigger-action sequences',  href: '#' },
+      { label: 'Revenue Insights',    desc: 'Forecast and track growth over time',    href: '#' },
     ],
   },
   industries: {
     label: 'Industries',
-    cols: 2,
     items: [
-      { label: 'Pressure Washing', desc: '', href: '#' },
-      { label: 'Landscaping',      desc: '', href: '#' },
-      { label: 'Cleaning',         desc: '', href: '#' },
-      { label: 'Mobile Detailing', desc: '', href: '#' },
-      { label: 'Contracting',      desc: '', href: '#' },
-      { label: 'Home Services',    desc: '', href: '#' },
+      { label: 'Pressure Washing', desc: 'Built for wash pros', href: '#' },
+      { label: 'Landscaping',      desc: 'Manage seasonal volume', href: '#' },
+      { label: 'Cleaning',         desc: 'Recurring client tools', href: '#' },
+      { label: 'Mobile Detailing', desc: 'Route and book faster', href: '#' },
     ],
   },
   resources: {
     label: 'Resources',
-    cols: 1,
     items: [
-      { label: 'Case Studies',    desc: 'See how contractors grow with Automax', href: '#' },
-      { label: 'Book a Demo',     desc: 'See the platform live with your team',  href: '#' },
-      { label: 'Blog',            desc: 'Tips and strategy for service pros',    href: '#' },
-      { label: 'Help Center',     desc: 'Guides, docs, and support',             href: '#' },
-      { label: 'ROI Calculator',  desc: 'Estimate your growth potential',        href: '#' },
+      { label: 'Case Studies',   desc: 'See how contractors grow with Automax', href: '#' },
+      { label: 'Book a Demo',    desc: 'See the platform live in 20 minutes',   href: '#' },
+      { label: 'Help Center',    desc: 'Guides, docs, and support',             href: '#' },
+      { label: 'ROI Calculator', desc: 'Estimate your growth potential',        href: '#' },
     ],
   },
 } as const
@@ -176,25 +165,22 @@ export function MarketingNav() {
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)]"
+          className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto max-w-7xl px-8 py-6">
-            <div className={cn(
-              'grid gap-2',
-              menu.cols === 2 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 max-w-md',
-            )}>
+          <div className="mx-auto max-w-7xl px-8 py-5">
+            <div className="grid grid-cols-2 gap-1 max-w-xl">
               {menu.items.map(item => (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="flex items-start gap-3 rounded-xl p-3.5 hover:bg-white/5 transition-colors group"
+                  className="flex items-start gap-3 rounded-xl p-3 hover:bg-white/6 transition-colors group"
                 >
-                  <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600/15 ring-1 ring-blue-500/20 group-hover:bg-blue-600/25 transition-colors">
+                  <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-blue-600/20 ring-1 ring-blue-500/25 group-hover:bg-blue-600/30 transition-colors">
                     <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
                   </div>
                   <div>
-                    <div className="text-[13px] font-semibold text-white group-hover:text-blue-300 transition-colors">{item.label}</div>
-                    {item.desc && <div className="text-[12px] text-white/40 mt-0.5 leading-relaxed">{item.desc}</div>}
+                    <div className="text-[13px] font-semibold text-white/90 group-hover:text-white transition-colors">{item.label}</div>
+                    {item.desc && <div className="text-[12px] text-white/55 mt-0.5 leading-snug">{item.desc}</div>}
                   </div>
                 </Link>
               ))}

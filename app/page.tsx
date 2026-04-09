@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowRight, Check, Zap, Users, FileText, Star, TrendingUp, Bot, Globe } from 'lucide-react'
 import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
+import { MarketingShell } from '@/components/marketing/marketing-shell'
 
 // ── Shared design tokens ──────────────────────────────────────────────────────
 
@@ -134,6 +135,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function LandingPage() {
   return (
+    <MarketingShell>
     <div className="bg-background">
       <MarketingNav />
 
@@ -514,5 +516,6 @@ export default function LandingPage() {
 
       <MarketingFooter />
     </div>
+    </MarketingShell>
   )
 }
