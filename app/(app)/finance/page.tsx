@@ -12,9 +12,23 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { useFinanceData, useActivities } from "@/hooks/use-data"
+import { useFinanceData, useActivities, useDeleteExpense, useDeleteTransaction } from "@/hooks/use-data"
 import { AddExpenseDialog } from "@/components/finance/add-expense-dialog"
+import { AddIncomeDialog } from "@/components/finance/add-income-dialog"
+import { AddTransactionDialog } from "@/components/finance/add-transaction-dialog"
+import { ProfitReportModal } from "@/components/finance/profit-report-modal"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { formatCurrency, formatRelativeTime } from "@/lib/data-service"
+import type { FinanceTransaction } from "@/lib/data-service"
 import {
   Plus,
   Download,
@@ -29,26 +43,26 @@ import {
   Receipt,
   AlertCircle,
   ArrowUpRight,
-  ArrowDownRight,
   Search,
-  Filter,
-  MoreHorizontal,
   ChevronRight,
   Sparkles,
-  Lightbulb,
   BarChart3,
   PieChart,
   Clock,
   CheckCircle2,
   XCircle,
   FileText,
-  Zap,
-  Building,
-  Truck,
-  Droplets,
   Home,
-  Wrench,
   Loader2,
+  Pencil,
+  Trash2,
+  Lock,
+  Activity,
+  Zap,
+  Droplets,
+  Truck,
+  Building,
+  Wrench,
 } from "lucide-react"
 
 // Date range options
@@ -164,20 +178,46 @@ export default function FinancePage() {
   const [transactionFilter, setTransactionFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddExpense, setShowAddExpense] = useState(false)
+  const [showAddTransaction, setShowAddTransaction] = useState(false)
+  const [showEditExpense, setShowEditExpense] = useState(false)
+  const [showEditIncome, setShowEditIncome] = useState(false)
+  const [showProfitReport, setShowProfitReport] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<FinanceTransaction | null>(null)
+  const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null)
+  const [confirmDeleteRow, setConfirmDeleteRow] = useState<FinanceTransaction | null>(null)
+
+  const { deleteExpense, isDeleting: isDeletingExpense } = useDeleteExpense()
+  const { deleteTransaction, isDeleting: isDeletingTransaction } = useDeleteTransaction()
+
+  const handleEdit = (t: FinanceTransaction) => {
+    if (!t.editable) return
+    if (t.type === "expense" && t.raw_expense_id) {
+      setEditingExpense(t)
+      setShowEditExpense(true)
+    } else if (t.type === "income" && t.raw_transaction_id) {
+      setEditingTransaction(t)
+      setShowEditIncome(true)
+    }
+  }
+
+  const handleDeleteConfirmed = async () => {
+    if (!confirmDeleteRow) return
+    if (confirmDeleteRow.raw_expense_id) {
+      await deleteExpense(confirmDeleteRow.raw_expense_id)
+    } else if (confirmDeleteRow.raw_transaction_id) {
+      await deleteTransaction(confirmDeleteRow.raw_transaction_id)
+    }
+    setConfirmDeleteRow(null)
+  }
 
   // Build dynamic KPIs from real data
-  // Total Revenue = Scheduled + Completed leads
-  // Scheduled Revenue = leads with status = "scheduled" (booked but not completed)
-  // Collected Revenue = leads with status = "completed"
   const dynamicKPIs = financeData ? [
-    { key: "revenue", label: "Total Revenue", value: financeData.totalRevenue, trend: `${financeData.jobCount} jobs`, trendUp: true, prefix: "$", icon: DollarSign },
-    { key: "scheduled", label: "Scheduled", value: financeData.scheduledRevenue, trend: `${financeData.leadsByStatus.scheduled || 0} scheduled`, trendUp: null, prefix: "$", icon: CalendarCheck },
-    { key: "collected", label: "Collected", value: financeData.collectedRevenue, trend: `${financeData.leadsByStatus.completed || 0} completed`, trendUp: true, prefix: "$", icon: Banknote },
-    { key: "avgJob", label: "Avg Job Size", value: financeData.avgJobSize, trend: "Per job", trendUp: true, prefix: "$", icon: Receipt },
-    { key: "expenses", label: "Total Expenses", value: financeData.totalExpenses, trend: "This period", trendUp: false, prefix: "$", icon: CreditCard },
-    { key: "newLeads", label: "New Leads", value: financeData.leadsByStatus.new || 0, trend: "In pipeline", trendUp: null, prefix: "", icon: TrendingUp },
-    { key: "quoted", label: "Quoted", value: financeData.leadsByStatus.quoted || 0, trend: "Awaiting decision", trendUp: null, prefix: "", icon: FileText },
-    { key: "lost", label: "Lost", value: financeData.leadsByStatus.lost || 0, trend: "This period", trendUp: false, prefix: "", icon: XCircle },
+    { key: "revenue", label: "Total Revenue", value: financeData.totalRevenue, trend: `${financeData.jobCount} jobs`, trendUp: true, prefix: "$", suffix: undefined as string | undefined, icon: DollarSign },
+    { key: "scheduled", label: "Scheduled", value: financeData.scheduledRevenue, trend: `${financeData.leadsByStatus.scheduled || 0} jobs`, trendUp: null, prefix: "$", suffix: undefined as string | undefined, icon: CalendarCheck },
+    { key: "collected", label: "Collected", value: financeData.collectedRevenue, trend: `${financeData.leadsByStatus.completed || 0} completed`, trendUp: true, prefix: "$", suffix: undefined as string | undefined, icon: Banknote },
+    { key: "avgJob", label: "Avg Job Size", value: financeData.avgJobSize, trend: "Per job", trendUp: true, prefix: "$", suffix: undefined as string | undefined, icon: Receipt },
+    { key: "expenses", label: "Total Expenses", value: financeData.totalExpenses, trend: "This period", trendUp: false, prefix: "$", suffix: undefined as string | undefined, icon: CreditCard },
+    { key: "margin", label: "Profit Margin", value: financeData.profitMargin, trend: `${formatCurrency(financeData.grossProfit)} profit`, trendUp: financeData.grossProfit >= 0, prefix: "", suffix: "%", icon: Percent },
   ] : financeKPIs
 
   // Use real service revenue data
@@ -185,16 +225,31 @@ export default function FinancePage() {
     ? financeData.revenueByService.map(s => ({ ...s, margin: 75 })) // Default margin since we don't track expenses per service
     : serviceRevenue
 
-  // Use real activities
-  const dynamicActivity = activities.length > 0 
-    ? activities.slice(0, 5).map((a, i) => ({
-        id: i,
-        type: a.type,
-        message: a.description,
-        time: formatRelativeTime(a.created_at),
-        icon: a.type === "job_booked" ? DollarSign : a.type === "quote_updated" ? FileText : Clock,
-      }))
-    : financialActivity
+  // Finance-relevant activity types
+  const FINANCE_ACTIVITY_TYPES = new Set([
+    "job_booked", "job_completed", "income_added", "expense_added",
+    "expense_updated", "quote_updated", "status_changed",
+  ])
+
+  const financeActivities = activities
+    .filter(a => FINANCE_ACTIVITY_TYPES.has(a.type))
+    .slice(0, 8)
+
+  const getActivityIcon = (type: string) => {
+    if (type === "job_completed" || type === "income_added") return DollarSign
+    if (type === "expense_added" || type === "expense_updated") return CreditCard
+    if (type === "job_booked") return CalendarCheck
+    if (type === "quote_updated") return FileText
+    return Activity
+  }
+
+  const getActivityColor = (type: string) => {
+    if (type === "job_completed" || type === "income_added") return "emerald"
+    if (type === "expense_added" || type === "expense_updated") return "red"
+    if (type === "job_booked") return "blue"
+    if (type === "quote_updated") return "amber"
+    return "muted"
+  }
 
   // Generate dynamic AI insights based on real data
   const dynamicInsights = financeData ? [
@@ -235,6 +290,32 @@ export default function FinancePage() {
     return true
   })
 
+  const exportCSV = () => {
+    if (!filteredTransactions.length) return
+    const headers = ["Date", "Type", "Source", "Client", "Category", "Description", "Amount", "Status", "Payment Method"]
+    const csvRows = filteredTransactions.map(t => [
+      new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      t.type === "income" ? "Income" : "Expense",
+      t.source_type === "manual" ? "Manual" : "Synced",
+      t.client || "",
+      t.category || "",
+      t.description || "",
+      t.amount.toFixed(2),
+      t.status || "",
+      t.payment_method || "",
+    ])
+    const csv = [headers, ...csvRows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `automax-finance-${dateRange}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background pt-14 lg:pt-0">
@@ -271,11 +352,11 @@ export default function FinancePage() {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button variant="outline" size="sm" className="h-9 text-[13px] flex-1 sm:flex-none">
+              <Button variant="outline" size="sm" className="h-9 text-[13px] flex-1 sm:flex-none" onClick={exportCSV}>
                 <Download className="h-4 w-4 mr-1.5" />
-                Export Report
+                Export CSV
               </Button>
-              <Button size="sm" className="h-9 text-[13px] flex-1 sm:flex-none">
+              <Button size="sm" className="h-9 text-[13px] flex-1 sm:flex-none" onClick={() => setShowAddTransaction(true)}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Transaction
               </Button>
@@ -286,7 +367,7 @@ export default function FinancePage() {
 
       <div className="px-5 py-5 sm:p-6 lg:p-8 space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
           {dynamicKPIs.map((kpi) => (
             <div key={kpi.key} className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -477,9 +558,13 @@ export default function FinancePage() {
                   <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Type</th>
                   <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Category</th>
                   <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Description</th>
-                  <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Client</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {transactionFilter === "income" ? "Client" : transactionFilter === "expenses" ? "Vendor" : "Client / Vendor"}
+                  </th>
                   <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Amount</th>
                   <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Source</th>
+                  <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -519,6 +604,54 @@ export default function FinancePage() {
                           : t.status === "pending" ? "Pending"
                           : "Scheduled"}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        t.source_type === "manual"
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                          : "bg-secondary text-muted-foreground"
+                      )}>
+                        {t.source_type === "manual" ? "Manual" : "Synced"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-1">
+                        {t.editable ? (
+                          <button
+                            onClick={() => handleEdit(t)}
+                            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground/40 cursor-not-allowed"
+                            title="Synced from lead — not editable"
+                            disabled
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {t.deletable ? (
+                          <button
+                            onClick={() => setConfirmDeleteRow(t)}
+                            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-500"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground/40 cursor-not-allowed"
+                            title="Synced from lead — not deletable"
+                            disabled
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -700,94 +833,276 @@ export default function FinancePage() {
 
         {/* Recent Activity + Quick Actions + AI Insights */}
         <div className="grid gap-5 lg:grid-cols-3">
-          {/* Recent Financial Activity */}
-          <div className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border px-5 py-4">
-              <h2 className="text-[14px] font-semibold text-foreground">Recent Financial Activity</h2>
-            </div>
-            <div className="divide-y divide-border">
-              {dynamicActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 px-5 py-3.5">
-                  <div className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full mt-0.5",
-                    activity.type === "payment" && "bg-emerald-500/10",
-                    activity.type === "expense" && "bg-red-500/10",
-                    activity.type === "reminder" && "bg-amber-500/10",
-                    activity.type === "insight" && "bg-blue-500/10",
-                    activity.type === "trend" && "bg-violet-500/10"
-                  )}>
-                    <activity.icon className={cn(
-                      "h-3.5 w-3.5",
-                      activity.type === "payment" && "text-emerald-600 dark:text-emerald-400",
-                      activity.type === "expense" && "text-red-600 dark:text-red-400",
-                      activity.type === "reminder" && "text-amber-600 dark:text-amber-400",
-                      activity.type === "insight" && "text-blue-600 dark:text-blue-400",
-                      activity.type === "trend" && "text-violet-600 dark:text-violet-400"
-                    )} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-foreground">{activity.message}</p>
-                    <p className="text-[12px] text-muted-foreground mt-0.5">{activity.time}</p>
-                  </div>
+
+          {/* Recent Financial Activity — live feed */}
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="relative flex items-center justify-center h-6 w-6">
+                  <span className="absolute inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </div>
-              ))}
+                <h2 className="text-[14px] font-semibold text-foreground">Recent Activity</h2>
+              </div>
+              <span className="text-[11px] text-muted-foreground">Live</span>
             </div>
+            {financeActivities.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 px-5 text-center gap-2">
+                <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center mb-1">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-[13px] font-medium text-foreground">No recent finance activity</p>
+                <p className="text-[12px] text-muted-foreground leading-snug">
+                  Activity appears here when jobs are scheduled, completed, or transactions are recorded.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {financeActivities.map((a) => {
+                  const color = getActivityColor(a.type)
+                  const Icon = getActivityIcon(a.type)
+                  return (
+                    <div key={a.id} className={cn(
+                      "flex items-start gap-3 px-5 py-3.5 border-l-2 transition-colors hover:bg-secondary/10",
+                      color === "emerald" && "border-l-emerald-500/60",
+                      color === "red"     && "border-l-red-500/60",
+                      color === "blue"    && "border-l-blue-500/60",
+                      color === "amber"   && "border-l-amber-500/60",
+                      color === "muted"   && "border-l-transparent",
+                    )}>
+                      <div className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-lg mt-0.5 flex-shrink-0",
+                        color === "emerald" && "bg-emerald-500/10",
+                        color === "red"     && "bg-red-500/10",
+                        color === "blue"    && "bg-blue-500/10",
+                        color === "amber"   && "bg-amber-500/10",
+                        color === "muted"   && "bg-secondary",
+                      )}>
+                        <Icon className={cn(
+                          "h-3.5 w-3.5",
+                          color === "emerald" && "text-emerald-400",
+                          color === "red"     && "text-red-400",
+                          color === "blue"    && "text-blue-400",
+                          color === "amber"   && "text-amber-400",
+                          color === "muted"   && "text-muted-foreground",
+                        )} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-foreground leading-snug">{a.description}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">{formatRelativeTime(a.created_at)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
-          <div className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border px-5 py-4">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
               <h2 className="text-[14px] font-semibold text-foreground">Quick Actions</h2>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Finance shortcuts</p>
             </div>
-            <div className="p-5 space-y-2">
-              {quickActions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  className="w-full justify-start h-10 text-[13px]"
-                  onClick={action.label === "Add Expense" ? () => setShowAddExpense(true) : undefined}
-                >
-                  <action.icon className="h-4 w-4 mr-2.5 text-muted-foreground" />
-                  {action.label}
-                </Button>
-              ))}
+            <div className="p-4 grid grid-cols-2 gap-3">
+              {/* Add Income */}
+              <button
+                onClick={() => setShowAddTransaction(true)}
+                className="flex flex-col items-start gap-2.5 rounded-xl border border-border bg-card p-4 hover:bg-emerald-950/30 hover:border-emerald-700/50 transition-all group text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                  <DollarSign className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground leading-none">Add Income</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">Log a payment received</p>
+                </div>
+              </button>
+
+              {/* Add Expense */}
+              <button
+                onClick={() => setShowAddExpense(true)}
+                className="flex flex-col items-start gap-2.5 rounded-xl border border-border bg-card p-4 hover:bg-red-950/30 hover:border-red-700/50 transition-all group text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
+                  <CreditCard className="h-4 w-4 text-red-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground leading-none">Add Expense</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">Record a business cost</p>
+                </div>
+              </button>
+
+              {/* Export CSV */}
+              <button
+                onClick={exportCSV}
+                className="flex flex-col items-start gap-2.5 rounded-xl border border-border bg-card p-4 hover:bg-blue-950/30 hover:border-blue-700/50 transition-all group text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                  <Download className="h-4 w-4 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground leading-none">Export CSV</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">Download transactions</p>
+                </div>
+              </button>
+
+              {/* View Profit Report */}
+              <button
+                onClick={() => setShowProfitReport(true)}
+                className="flex flex-col items-start gap-2.5 rounded-xl border border-border bg-card p-4 hover:bg-violet-950/30 hover:border-violet-700/50 transition-all group text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
+                  <BarChart3 className="h-4 w-4 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground leading-none">Profit Report</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-snug">View &amp; download report</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Mark Payment Collected — coming soon */}
+            <div className="border-t border-border px-4 py-3">
+              <button
+                disabled
+                className="flex items-center gap-2.5 w-full opacity-40 cursor-not-allowed"
+                title="Coming after payment processor integration"
+              >
+                <div className="h-7 w-7 rounded-lg bg-secondary flex items-center justify-center">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[12px] font-medium text-muted-foreground">Mark Payment Collected</p>
+                  <p className="text-[11px] text-muted-foreground/60">Coming soon</p>
+                </div>
+              </button>
             </div>
           </div>
 
           {/* AI Finance Insights */}
-          <div className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border px-5 py-4">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-blue-950/40 to-violet-950/20">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <h2 className="text-[14px] font-semibold text-foreground">AI Finance Insights</h2>
+                <div className="h-6 w-6 rounded-md bg-blue-500/20 flex items-center justify-center">
+                  <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                </div>
+                <h2 className="text-[14px] font-semibold text-foreground">AI Insights</h2>
+                <span className="ml-auto text-[10px] font-medium text-blue-400 bg-blue-500/10 rounded-full px-2 py-0.5">LIVE</span>
               </div>
             </div>
-            <div className="p-5 space-y-3">
-              {dynamicInsights.map((insight, i) => (
-                <div 
-                  key={i}
-                  className={cn(
-                    "flex items-start gap-3 rounded-lg border p-3",
-                    insight.priority === "high" 
-                      ? "border-amber-500/30 bg-amber-500/5 dark:border-amber-500/20 dark:bg-amber-500/10"
-                      : "border-border"
-                  )}
-                >
-                  <insight.icon className={cn(
-                    "h-4 w-4 flex-shrink-0 mt-0.5",
-                    insight.priority === "high" 
-                      ? "text-amber-600 dark:text-amber-400" 
-                      : "text-muted-foreground"
-                  )} />
-                  <p className="text-[13px] text-foreground leading-snug">{insight.message}</p>
-                </div>
-              ))}
-            </div>
+            {dynamicInsights.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                <Zap className="h-8 w-8 text-muted-foreground/30" />
+                <p className="text-[13px] text-muted-foreground">No insights yet for this period</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-2.5">
+                {dynamicInsights.map((insight, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border p-3.5 transition-colors",
+                      insight.priority === "high"
+                        ? "border-amber-500/25 bg-amber-500/5"
+                        : insight.priority === "medium"
+                        ? "border-blue-500/20 bg-blue-500/5"
+                        : "border-border bg-secondary/20"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5",
+                      insight.priority === "high"   ? "bg-amber-500/15" :
+                      insight.priority === "medium" ? "bg-blue-500/15"  : "bg-secondary"
+                    )}>
+                      <insight.icon className={cn(
+                        "h-3.5 w-3.5",
+                        insight.priority === "high"   ? "text-amber-400" :
+                        insight.priority === "medium" ? "text-blue-400"  : "text-muted-foreground"
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={cn(
+                        "text-[10px] font-semibold uppercase tracking-wide mb-1",
+                        insight.priority === "high"   ? "text-amber-500" :
+                        insight.priority === "medium" ? "text-blue-400"  : "text-muted-foreground"
+                      )}>
+                        {insight.priority === "high" ? "Action needed" : insight.priority === "medium" ? "Heads up" : "Info"}
+                      </div>
+                      <p className="text-[12px] text-foreground leading-snug">{insight.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Add via picker */}
+      <AddTransactionDialog open={showAddTransaction} onOpenChange={setShowAddTransaction} />
+
+      {/* Profit report */}
+      <ProfitReportModal open={showProfitReport} onOpenChange={setShowProfitReport} defaultRange={dateRange} />
+
+      {/* Legacy add-expense shortcut (from empty state button) */}
       <AddExpenseDialog open={showAddExpense} onOpenChange={setShowAddExpense} />
+
+      {/* Edit expense */}
+      <AddExpenseDialog
+        open={showEditExpense}
+        onOpenChange={(open) => { setShowEditExpense(open); if (!open) setEditingExpense(null) }}
+        expense={editingExpense ? {
+          id: editingExpense.raw_expense_id!,
+          amount: editingExpense.amount,
+          expense_date: editingExpense.date,
+          expense_category_id: null,
+          vendor: editingExpense.client || null,
+          description: editingExpense.description || null,
+          payment_method: null,
+        } : null}
+      />
+
+      {/* Edit manual income */}
+      <AddIncomeDialog
+        open={showEditIncome}
+        onOpenChange={(open) => { setShowEditIncome(open); if (!open) setEditingTransaction(null) }}
+        transaction={editingTransaction ? {
+          id: editingTransaction.raw_transaction_id!,
+          amount: editingTransaction.amount,
+          transaction_date: editingTransaction.date,
+          category: editingTransaction.category || null,
+          description: editingTransaction.description || null,
+          payment_method: null,
+        } : null}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!confirmDeleteRow} onOpenChange={(open) => { if (!open) setConfirmDeleteRow(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[15px] font-bold">Delete Transaction?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
+              This will permanently delete{" "}
+              <span className="font-medium text-foreground">
+                {confirmDeleteRow?.description || confirmDeleteRow?.category || "this transaction"}
+              </span>{" "}
+              ({confirmDeleteRow ? formatCurrency(confirmDeleteRow.amount) : ""}). This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8 text-[13px]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              disabled={isDeletingExpense || isDeletingTransaction}
+              className="h-8 text-[13px] bg-red-600 hover:bg-red-700 text-white"
+            >
+              {(isDeletingExpense || isDeletingTransaction) && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -40,8 +40,12 @@ export async function updateSession(request: NextRequest) {
   // Protect all app routes (dashboard, leads, pipeline, etc.)
   // Allow access to auth routes and the landing page
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
-  const isLandingPage = request.nextUrl.pathname === '/'
-  const isPublicRoute = isAuthRoute || isLandingPage
+  const isMarketingRoute =
+    request.nextUrl.pathname === '/' ||
+    request.nextUrl.pathname === '/pricing' ||
+    request.nextUrl.pathname.startsWith('/platform') ||
+    request.nextUrl.pathname.startsWith('/growth')
+  const isPublicRoute = isAuthRoute || isMarketingRoute
 
   if (!user && !isPublicRoute) {
     // No user and trying to access protected route - redirect to login

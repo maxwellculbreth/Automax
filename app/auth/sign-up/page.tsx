@@ -12,9 +12,9 @@ import { Loader2, Check, ArrowRight } from 'lucide-react'
 // ─── Branding panel (desktop left column) ────────────────────────────────────
 
 const FEATURES = [
-  "Respond to leads faster",
-  "Turn jobs into 5-star reviews",
-  "Stay organized with a simple pipeline",
+  "AI qualifies and responds to leads instantly",
+  "Automated follow-ups that close more jobs",
+  "Intelligent scheduling, zero manual effort",
 ]
 
 function BrandingPanel() {
@@ -41,22 +41,23 @@ function BrandingPanel() {
           </svg>
         </div>
         <span className="select-none text-[15px] tracking-tight">
-          <span className="font-semibold text-white">Auto</span>
-          <span className="font-medium text-white/40">max</span>
+          <span className="font-bold text-white">Auto</span>
+          <span className="font-light text-blue-400/80">max</span>
         </span>
       </div>
 
       {/* Hero copy — pushed to bottom half */}
       <div className="relative z-10 mt-auto">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-400/70">
-          Built for service businesses
+          AI-powered · Built for service businesses
         </p>
         <h2 className="text-[33px] font-bold leading-[1.14] tracking-tight text-white xl:text-[37px]">
-          Run your business.<br />
-          We&apos;ll handle the rest.
+          Your AI runs<br />
+          the business.<br />
+          You run the decisions.
         </h2>
         <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-white/50">
-          Automax helps you manage leads, follow up automatically, and grow your business — all in one place.
+          Automax uses AI to qualify leads, automate follow-ups, and fill your schedule — so you focus on the work.
         </p>
 
         <ul className="mt-8 space-y-3.5">
@@ -72,7 +73,7 @@ function BrandingPanel() {
       </div>
 
       <p className="relative z-10 mt-10 text-[11px] text-white/25">
-        Used by growing service businesses
+        Automate the work. Keep the profit.
       </p>
     </div>
   )
@@ -91,16 +92,16 @@ function MobileHeader() {
           </svg>
         </div>
         <span className="select-none text-[14px] tracking-tight">
-          <span className="font-semibold text-white">Auto</span>
-          <span className="font-medium text-white/40">max</span>
+          <span className="font-bold text-white">Auto</span>
+          <span className="font-light text-blue-400/80">max</span>
         </span>
       </div>
       <p className="text-[18px] font-bold leading-snug text-white">
-        Run your business.<br />
-        We&apos;ll handle the rest.
+        Your AI runs the business.<br />
+        You run the decisions.
       </p>
       <p className="mt-1.5 text-[13px] text-white/50">
-        Manage leads, follow up automatically, and grow.
+        AI-powered lead automation and scheduling for service businesses.
       </p>
     </div>
   )
@@ -176,15 +177,15 @@ export default function SignUpPage() {
           <div className="w-full max-w-[400px]">
 
             {/* Card */}
-            <div className="rounded-2xl border border-border/60 bg-card px-7 py-8 shadow-sm">
+            <div className="rounded-2xl border border-border/50 bg-card px-7 py-8 shadow-[0_4px_32px_-4px_rgba(0,0,0,0.08),0_1px_6px_-1px_rgba(0,0,0,0.04)]">
 
               {/* Header */}
               <div className="mb-7">
-                <h1 className="text-[28px] font-bold tracking-tight text-foreground">
-                  Create your account
+                <h1 className="text-[26px] font-bold tracking-tight text-foreground">
+                  Start automating today
                 </h1>
                 <p className="mt-1.5 text-[14px] text-muted-foreground">
-                  Start using Automax today
+                  Set your business on autopilot in minutes.
                 </p>
               </div>
 
@@ -200,7 +201,7 @@ export default function SignUpPage() {
                     autoComplete="organization"
                     value={companyName}
                     onChange={e => setCompanyName(e.target.value)}
-                    className="h-10 text-[13px]"
+                    className="h-11 text-[13px] rounded-xl border-border/60 bg-muted/40 focus:bg-background focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all"
                   />
                 </div>
 
@@ -214,7 +215,7 @@ export default function SignUpPage() {
                     autoComplete="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="h-10 text-[13px]"
+                    className="h-11 text-[13px] rounded-xl border-border/60 bg-muted/40 focus:bg-background focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all"
                   />
                 </div>
 
@@ -227,7 +228,7 @@ export default function SignUpPage() {
                     autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="h-10 text-[13px]"
+                    className="h-11 text-[13px] rounded-xl border-border/60 bg-muted/40 focus:bg-background focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all"
                   />
                   <p className="text-[11px] text-muted-foreground/60">At least 6 characters</p>
                 </div>
@@ -241,12 +242,12 @@ export default function SignUpPage() {
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="h-10 text-[13px]"
+                    className="h-11 text-[13px] rounded-xl border-border/60 bg-muted/40 focus:bg-background focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all"
                   />
                 </div>
 
                 {error && (
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3.5 py-2.5">
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/[0.07] px-3.5 py-2.5">
                     <p className="text-[13px] text-red-600 dark:text-red-400">{error}</p>
                   </div>
                 )}
@@ -254,7 +255,7 @@ export default function SignUpPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-[11px] text-[14px] font-semibold text-white transition-all hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/20 active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 px-4 py-[11px] text-[14px] font-semibold text-white shadow-[0_2px_10px_rgba(59,130,246,0.30)] hover:from-blue-600 hover:to-blue-700 hover:shadow-[0_4px_18px_rgba(59,130,246,0.40)] hover:-translate-y-px active:translate-y-0 active:shadow-none transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 >
                   {isLoading
                     ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</>
@@ -268,7 +269,7 @@ export default function SignUpPage() {
               <p className="mt-6 text-center text-[13px] text-muted-foreground">
                 Already have an account?{' '}
                 <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                  Log in
+                  Sign in
                 </Link>
               </p>
 

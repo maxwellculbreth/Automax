@@ -12,10 +12,15 @@ import type {
   Business,
   Job,
   AIGeneration,
+  Integration,
+  ScheduledMessage,
+  AutomationLog,
   LeadInsert,
   LeadUpdate,
   MessageInsert,
   AutomationUpdate,
+  ScheduledMessageInsert,
+  AutomationLogInsert,
   LeadStatusDB,
   ExpenseCategory,
   Expense,
@@ -24,6 +29,8 @@ import type {
 
 // Re-export types for component usage
 export type { Lead, Message, Automation, Activity, User, Business, Job, AIGeneration }
+export type { Integration, ScheduledMessage, AutomationLog }
+export type { ScheduledMessageInsert, AutomationLogInsert }
 export type { LeadStatusDB as LeadStatus }
 export type { ExpenseCategory, Expense, ExpenseInsert }
 
@@ -305,7 +312,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_001",
     lead_id: "lead_001",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi, I need my driveway and back patio pressure washed before a graduation party next Saturday. Driveway is about 600 sq ft and patio is around 250 sq ft. Can you fit me in?",
     sender_type: "lead",
     sender_id: null,
@@ -317,7 +324,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_002",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Tom from Tom's BBQ recommended you guys. We have a tech office with a large parking area and building exterior that needs cleaning. Around 2,400 sq ft total. Looking for a quarterly contract.",
     sender_type: "lead",
     sender_id: null,
@@ -328,7 +335,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_003",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Robert! Thanks for reaching out - Tom's a great guy. I'd love to swing by tomorrow to take a look at the property and put together a detailed quote. Does 10am work?",
     sender_type: "business",
     sender_id: "user_001",
@@ -339,7 +346,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_004",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "10am works great. See you then.",
     sender_type: "lead",
     sender_id: null,
@@ -350,7 +357,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_005",
     lead_id: "lead_002",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Robert, great meeting you today. Here's the quote as promised:\n\n• Initial deep clean: $1,450\n• Quarterly maintenance: $850/visit\n• Includes parking lot, sidewalks, building exterior\n\nLet me know if you have any questions!",
     sender_type: "business",
     sender_id: "user_001",
@@ -362,7 +369,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_006",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Saw your post on Nextdoor. Need full house soft wash - we have algae and mildew on the north side. 2,200 sq ft single story.",
     sender_type: "lead",
     sender_id: null,
@@ -373,7 +380,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_007",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Maria! Full house soft wash for a 2,200 sq ft home would be $475. That includes all siding, eaves, and a rinse of the walkways. I have Thursday or Friday open this week - which works better?",
     sender_type: "business",
     sender_id: "user_001",
@@ -384,7 +391,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_008",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Thursday morning would be perfect.",
     sender_type: "lead",
     sender_id: null,
@@ -395,7 +402,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_009",
     lead_id: "lead_003",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "You're all set for Thursday at 8am. I'll text when we're on the way. Thanks Maria!",
     sender_type: "business",
     sender_id: "user_001",
@@ -407,7 +414,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_010",
     lead_id: "lead_004",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "I manage Crawfish Shack downtown. Our patio and sidewalk area needs cleaning urgently - health inspector coming Friday. Can you do tomorrow?",
     sender_type: "lead",
     sender_id: null,
@@ -418,7 +425,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_011",
     lead_id: "lead_004",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "James, I can absolutely help. I have a slot tomorrow at 6am before you open. For a restaurant patio and sidewalk, we're looking at around $875 including grease treatment. I'll bring the hot water unit. Can I get the address?",
     sender_type: "business",
     sender_id: "user_001",
@@ -430,7 +437,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_012",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Interested in getting my driveway and pool deck cleaned. Large circular driveway plus 400 sq ft pool deck.",
     sender_type: "lead",
     sender_id: null,
@@ -441,7 +448,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_013",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hi Linda! Thanks for reaching out. For a large circular driveway plus pool deck, I'd estimate around $550. Want me to come by for a quick look to give you an exact number?",
     sender_type: "business",
     sender_id: "user_001",
@@ -452,7 +459,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_014",
     lead_id: "lead_005",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "That sounds reasonable. Let me check my schedule and get back to you.",
     sender_type: "lead",
     sender_id: null,
@@ -464,7 +471,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_015",
     lead_id: "lead_006",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "I manage 6 rental properties in South Austin. Looking for a reliable pressure washing company to handle all of them on a rotating schedule. Each property needs service every 6 months.",
     sender_type: "lead",
     sender_id: null,
@@ -475,7 +482,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_016",
     lead_id: "lead_006",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Kevin, this sounds like a great fit. I'd love to put together a package deal for all 6 properties. Can we meet tomorrow to discuss the scope? I can swing by your office or meet at one of the properties.",
     sender_type: "business",
     sender_id: "user_001",
@@ -487,7 +494,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_017",
     lead_id: "lead_007",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Job complete! Your driveway looks brand new. Thanks for choosing Crystal Clear - here's a before/after photo. Would really appreciate a review if you have a moment: [review link]",
     sender_type: "business",
     sender_id: "user_002",
@@ -499,7 +506,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_018",
     lead_id: "lead_008",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Hey! You did our driveway last spring and it still looks great. Now we need the back fence and deck done before summer. Same deal?",
     sender_type: "lead",
     sender_id: null,
@@ -511,7 +518,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_019",
     lead_id: "lead_009",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Board member recommended you for our HOA. We need the community pool area, 4 pavilions, and main entrance sidewalks cleaned quarterly.",
     sender_type: "lead",
     sender_id: null,
@@ -522,7 +529,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_020",
     lead_id: "lead_009",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Tom, I walked the property yesterday and put together a comprehensive quote:\n\n• Pool deck & surrounding area: $1,200\n• 4 Pavilions: $800 ($200 each)\n• Main entrance & sidewalks: $1,200\n• Total: $3,200 per service\n• Quarterly rate: $2,900/visit (10% discount)\n\nThis includes full cleanup and all chemicals. Board approval needed?",
     sender_type: "business",
     sender_id: "user_001",
@@ -534,7 +541,7 @@ const mockMessages: Message[] = [
   {
     id: "msg_021",
     lead_id: "lead_010",
-    business_id: BUSINESS_ID,
+    company_id: BUSINESS_ID,
     content: "Thanks for the quote but we went with someone else. Your price was a bit higher than what we were looking for.",
     sender_type: "lead",
     sender_id: null,
@@ -1275,6 +1282,104 @@ async function createJobFromLead(lead: SupabaseLead, companyId: string): Promise
   }
 }
 
+// If this lead already has a linked client row, keep its fields in sync with the latest lead data.
+// This fixes stale rows where customer_name or contact info drifted after the client was created.
+async function refreshLinkedClient(lead: SupabaseLead, companyId: string): Promise<void> {
+  const supabase = createClient()
+  const { data: existing } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("lead_id", lead.id)
+    .maybeSingle()
+
+  if (!existing) return
+
+  await supabase
+    .from("clients")
+    .update({
+      full_name: lead.customer_name || "Unknown",
+      phone: lead.phone || null,
+      email: lead.email || null,
+      address: lead.address || null,
+      source: lead.source || null,
+      last_activity_at: lead.updated_at ?? new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", existing.id)
+    .eq("company_id", companyId)
+}
+
+// Create or update a client record when a lead reaches "completed" status.
+// Dedup order: lead_id → email → phone. Never creates duplicates.
+async function syncLeadToClient(lead: SupabaseLead, companyId: string): Promise<void> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+  const lastActivity = lead.completed_at ?? lead.updated_at ?? now
+
+  const clientFields = {
+    company_id: companyId,
+    lead_id: lead.id,
+    full_name: lead.customer_name || "Unknown",
+    phone: lead.phone || null,
+    email: lead.email || null,
+    address: lead.address || null,
+    source: lead.source || null,
+    status: "active" as const,
+    last_activity_at: lastActivity,
+    updated_at: now,
+  }
+
+  // 1. Match by lead_id
+  const { data: byLeadId } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("lead_id", lead.id)
+    .maybeSingle()
+
+  if (byLeadId) {
+    await supabase.from("clients").update(clientFields).eq("id", byLeadId.id).eq("company_id", companyId)
+    return
+  }
+
+  // 2. Match by email
+  if (lead.email) {
+    const { data: byEmail } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("email", lead.email)
+      .maybeSingle()
+
+    if (byEmail) {
+      await supabase.from("clients").update(clientFields).eq("id", byEmail.id).eq("company_id", companyId)
+      return
+    }
+  }
+
+  // 3. Match by phone
+  if (lead.phone) {
+    const { data: byPhone } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("phone", lead.phone)
+      .maybeSingle()
+
+    if (byPhone) {
+      await supabase.from("clients").update(clientFields).eq("id", byPhone.id).eq("company_id", companyId)
+      return
+    }
+  }
+
+  // 4. No match — insert new client
+  const { error } = await supabase.from("clients").insert({ ...clientFields, created_at: now })
+  if (error) {
+    console.error("Error creating client from lead:", error)
+  }
+}
+
 export async function updateLead(id: string, updates: LeadUpdate & { completed_at?: string }): Promise<Lead | null> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
@@ -1337,7 +1442,7 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
     })
   }
 
-  // If status changed to "completed", log job completion
+  // If status changed to "completed", log job completion and sync to clients
   if (normalizedStatus === "completed") {
     await logActivity({
       lead_id: updatedLead.id,
@@ -1346,6 +1451,12 @@ export async function updateLead(id: string, updates: LeadUpdate & { completed_a
       title: "Job completed",
       description: `${leadName} - ${updatedLead.service_type || "Service"} completed for $${updatedLead.quote_amount || 0}`,
     })
+    await syncLeadToClient(updatedLead, companyId)
+  }
+
+  // Keep any existing linked client row up to date (fixes stale name/contact info)
+  if (normalizedStatus !== "completed") {
+    await refreshLinkedClient(updatedLead, companyId)
   }
 
   return mapSupabaseLeadToLead(updatedLead)
@@ -1369,82 +1480,41 @@ export async function deleteLead(id: string): Promise<boolean> {
   return true
 }
 
-// ----- Messages (uses Supabase "converstaions" table - note the typo in the table name) -----
-
-// Type for Supabase converstaions table (table has a typo in name)
-interface SupabaseConversation {
-  id: string
-  lead_id: string
-  company_id: string
-  direction: "inbound" | "outbound"
-  channel: string
-  message_body: string
-  sent_at: string
-}
-
-// Map Supabase conversation to app Message type
-function mapSupabaseConversationToMessage(conv: SupabaseConversation): Message {
-  return {
-    id: conv.id,
-    lead_id: conv.lead_id,
-    business_id: conv.company_id,
-    content: conv.message_body || "",
-    sender_type: conv.direction === "inbound" ? "lead" : "business",
-    sender_id: null,
-    channel: (conv.channel as Message["channel"]) || "sms",
-    is_read: true,
-    created_at: conv.sent_at,
-  }
-}
+// ----- Messages (uses Supabase "messages" table — matches 001_create_schema.sql) -----
 
 export async function getMessages(leadId: string): Promise<Message[]> {
   const supabase = createClient()
-  const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    return []
-  }
-  
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return []
+
   const { data, error } = await supabase
-    .from("converstaions")
+    .from("messages")
     .select("*")
     .eq("lead_id", leadId)
-    .eq("company_id", companyId)
-    .order("sent_at", { ascending: true })
+    .eq("company_id", businessId)
+    .order("created_at", { ascending: true })
 
   if (error) {
     console.error("Error fetching messages:", error)
     return []
   }
 
-  if (!data || data.length === 0) {
-    return []
-  }
-
-  return data.map((conv: SupabaseConversation) => mapSupabaseConversationToMessage(conv))
+  return data ?? []
 }
 
 export async function createMessage(message: MessageInsert): Promise<Message | null> {
   const supabase = createClient()
-  const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    console.error("Error creating message: No company_id found")
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) {
+    console.error("createMessage: no business_id found")
     return null
-  }
-  
-  const supabaseInsert = {
-    lead_id: message.lead_id,
-    company_id: companyId,
-    direction: message.sender_type === "lead" ? "inbound" : "outbound",
-    channel: message.channel || "app",
-    message_body: message.content || "",
-    sent_at: new Date().toISOString(),
   }
 
   const { data, error } = await supabase
-    .from("converstaions")
-    .insert(supabaseInsert)
+    .from("messages")
+    .insert({ ...message, company_id: businessId })
     .select()
     .single()
 
@@ -1453,13 +1523,99 @@ export async function createMessage(message: MessageInsert): Promise<Message | n
     return null
   }
 
-  return mapSupabaseConversationToMessage(data as SupabaseConversation)
+  return data as Message
 }
 
 export async function markMessagesRead(leadId: string): Promise<void> {
-  // Note: The conversations table doesn't have an is_read field
-  // This is kept for compatibility with the existing UI
-  mockMessages.filter((m) => m.lead_id === leadId).forEach((m) => (m.is_read = true))
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ is_read: true })
+    .eq("lead_id", leadId)
+    .eq("company_id", businessId)
+    .eq("is_read", false)
+
+  if (error) {
+    console.error("Error marking messages read:", error)
+  }
+}
+
+// ----- Scheduled Messages -----
+
+export async function getScheduledMessages(leadId?: string): Promise<ScheduledMessage[]> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return []
+
+  let query = supabase
+    .from("scheduled_messages")
+    .select("*")
+    .eq("company_id", businessId)
+    .order("send_at", { ascending: true })
+
+  if (leadId) {
+    query = query.eq("lead_id", leadId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error("Error fetching scheduled messages:", error)
+    return []
+  }
+
+  return data ?? []
+}
+
+export async function createScheduledMessage(
+  msg: Omit<ScheduledMessageInsert, "company_id">
+): Promise<ScheduledMessage | null> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) {
+    console.error("createScheduledMessage: no company_id found")
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from("scheduled_messages")
+    .insert({ ...msg, company_id: businessId })
+    .select()
+    .single()
+
+  if (error) {
+    console.error("Error creating scheduled message:", error)
+    return null
+  }
+
+  return data as ScheduledMessage
+}
+
+export async function cancelScheduledMessage(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const businessId = await getCurrentUserCompanyId()
+
+  if (!businessId) return false
+
+  const { error } = await supabase
+    .from("scheduled_messages")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("company_id", businessId)
+    .eq("status", "pending") // only cancel if still pending
+
+  if (error) {
+    console.error("Error cancelling scheduled message:", error)
+    return false
+  }
+
+  return true
 }
 
 // ----- Automations -----
@@ -1483,11 +1639,12 @@ export async function updateAutomation(id: string, updates: AutomationUpdate): P
 // ----- Activities (uses Supabase "activity_log" table) -----
 
 // Type for Supabase activity_log table (matches actual schema)
-// Schema: id, company_id, lead_id, activity_type, title, description, created_at
+// Schema: id, company_id, lead_id, job_id, activity_type, title, description, created_at
 interface SupabaseActivity {
   id: string
   company_id: string
   lead_id?: string | null
+  job_id?: string | null
   activity_type?: string
   title?: string
   description?: string
@@ -1508,14 +1665,23 @@ function mapSupabaseActivityToActivity(activity: SupabaseActivity): Activity {
   }
 }
 
+// Metadata shape stored on Activity for the dashboard feed.
+// All values come from live Supabase joins — never from stale description text.
+export interface ActivityFeedMeta {
+  lead_name?: string       // current customer_name from leads table
+  service_type?: string    // current service_type from leads table
+  quote_amount?: number    // current quote_amount from leads table
+  job_title?: string       // current title from jobs table
+  job_price?: number       // current price from jobs table
+  raw_title?: string       // activity_log.title (event label, generally clean)
+}
+
 export async function getActivities(limit = 20): Promise<Activity[]> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
-  
-  if (!companyId) {
-    return []
-  }
-  
+
+  if (!companyId) return []
+
   const { data, error } = await supabase
     .from("activity_log")
     .select("*")
@@ -1528,11 +1694,71 @@ export async function getActivities(limit = 20): Promise<Activity[]> {
     return []
   }
 
-  if (!data || data.length === 0) {
-    return []
+  if (!data || data.length === 0) return []
+
+  // ── Collect unique IDs for batch joins ──────────────────────────────────
+  const leadIds = [
+    ...new Set(
+      data
+        .filter((a: SupabaseActivity) => a.lead_id)
+        .map((a: SupabaseActivity) => a.lead_id as string)
+    ),
+  ]
+  const jobIds = [
+    ...new Set(
+      data
+        .filter((a: SupabaseActivity) => a.job_id)
+        .map((a: SupabaseActivity) => a.job_id as string)
+    ),
+  ]
+
+  // ── Fetch current lead data (names/service/amount are the live truth) ───
+  type LeadRow = { id: string; customer_name: string | null; service_type: string | null; quote_amount: number | null }
+  const leadMap: Record<string, LeadRow> = {}
+  if (leadIds.length > 0) {
+    const { data: leadsData } = await supabase
+      .from("leads")
+      .select("id, customer_name, service_type, quote_amount")
+      .in("id", leadIds)
+    if (leadsData) {
+      for (const l of leadsData as LeadRow[]) {
+        if (l.id) leadMap[l.id] = l
+      }
+    }
   }
 
-  return data.map((activity: SupabaseActivity) => mapSupabaseActivityToActivity(activity))
+  // ── Fetch current job data ───────────────────────────────────────────────
+  type JobRow = { id: string; title: string | null; price: number | null }
+  const jobMap: Record<string, JobRow> = {}
+  if (jobIds.length > 0) {
+    const { data: jobsData } = await supabase
+      .from("jobs")
+      .select("id, title, price")
+      .in("id", jobIds)
+    if (jobsData) {
+      for (const j of jobsData as JobRow[]) {
+        if (j.id) jobMap[j.id] = j
+      }
+    }
+  }
+
+  // ── Build activities with rich live metadata ─────────────────────────────
+  return data.map((activity: SupabaseActivity) => {
+    const mapped = mapSupabaseActivityToActivity(activity)
+    const lead = activity.lead_id ? leadMap[activity.lead_id] : null
+    const job  = activity.job_id  ? jobMap[activity.job_id]   : null
+
+    const meta: ActivityFeedMeta = {
+      lead_name:    lead?.customer_name  ?? undefined,
+      service_type: lead?.service_type   ?? undefined,
+      quote_amount: lead?.quote_amount   ?? undefined,
+      job_title:    job?.title           ?? undefined,
+      job_price:    job?.price           ?? undefined,
+      raw_title:    activity.title       ?? undefined,
+    }
+    mapped.metadata = meta as unknown as Activity["metadata"]
+    return mapped
+  })
 }
 
 // ----- Jobs (uses Supabase "jobs" table) -----
@@ -1647,6 +1873,63 @@ export async function getUpcomingJobs(limit = 5): Promise<Job[]> {
   return data.map((job: SupabaseJob) => mapSupabaseJobToJob(job))
 }
 
+// Jobs scheduled for today (any time, including past)
+export async function getTodayJobs(): Promise<Job[]> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return []
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1)
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("scheduled_at", todayStart.toISOString())
+    .lt("scheduled_at", tomorrowStart.toISOString())
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching today's jobs:", error)
+    return []
+  }
+  return (data || []).map((job: SupabaseJob) => mapSupabaseJobToJob(job))
+}
+
+// Jobs scheduled for the current calendar week (Mon–Sun), excludes cancelled
+export async function getWeekJobs(): Promise<Job[]> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return []
+
+  const now = new Date()
+  const day = now.getDay()
+  const daysFromMonday = day === 0 ? 6 : day - 1
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("scheduled_at", weekStart.toISOString())
+    .lt("scheduled_at", weekEnd.toISOString())
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching week jobs:", error)
+    return []
+  }
+  return (data || []).map((job: SupabaseJob) => mapSupabaseJobToJob(job))
+}
+
 // ----- AI Generations -----
 export async function getAIGenerations(limit = 10): Promise<AIGeneration[]> {
   // TODO: Replace with Supabase query
@@ -1670,6 +1953,9 @@ export const dateRangeButtonLabels: Record<DateRangeKey, string> = {
   quarter: "This Quarter",
   year: "This Year",
 }
+
+// Optional custom date range to override the preset DateRangeKey window
+export interface CustomDateRange { from: Date; to: Date }
 
 // Returns the start of the current calendar period for the given range key.
 export function getDateRangeStart(range: DateRangeKey): Date {
@@ -1782,15 +2068,21 @@ export interface DashboardKPIs {
   weeklyGrowth: number
 }
 
-export async function getDashboardKPIs(range: DateRangeKey = "week"): Promise<DashboardKPIs> {
+export async function getDashboardKPIs(
+  range: DateRangeKey = "week",
+  customRange?: CustomDateRange
+): Promise<DashboardKPIs> {
   const supabase = createClient()
   const companyId = await getCurrentUserCompanyId()
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const rangeStart = getDateRangeStart(range)
-  const rangeEnd = getRangeEnd(range, rangeStart)       // exclusive upper bound
-  const prevRangeStart = getPrevRangeStart(range, rangeStart)
+  const rangeStart = customRange ? customRange.from : getDateRangeStart(range)
+  const rangeEnd   = customRange ? customRange.to   : getRangeEnd(range, rangeStart)
+  // For custom ranges, use an equally-long preceding window for growth comparison
+  const prevRangeStart = customRange
+    ? new Date(rangeStart.getTime() - (rangeEnd.getTime() - rangeStart.getTime()))
+    : getPrevRangeStart(range, rangeStart)
 
   if (!companyId) {
     return {
@@ -1966,8 +2258,7 @@ export async function getUrgentItems(): Promise<UrgentItem[]> {
   // Add new leads (highest priority)
   newLeads.forEach((lead) => {
     const createdAt = lead.created_at ? new Date(lead.created_at) : now
-    const minutesAgo = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60)))
-    const timeLabel = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)}h ago`
+    const timeLabel = formatElapsed(Math.max(0, now.getTime() - createdAt.getTime()))
     
     items.push({
       id: `urgent_${lead.id}`,
@@ -2000,12 +2291,12 @@ export async function getUrgentItems(): Promise<UrgentItem[]> {
     if (lead.next_follow_up_at && new Date(lead.next_follow_up_at) < now) return
     
     const updatedAt = lead.updated_at ? new Date(lead.updated_at) : new Date(lead.created_at || now)
-    const hoursAgo = Math.max(0, Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60)))
-    
+    const elapsed = Math.max(0, now.getTime() - updatedAt.getTime())
+
     items.push({
       id: `urgent_quote_${lead.id}`,
       type: "quote_stale",
-      title: `Quote sent ${hoursAgo}h ago`,
+      title: `Quote sent ${formatElapsed(elapsed)}`,
       subtitle: `${lead.customer_name || "Unknown"} • ${lead.service_type || "Service"} • $${lead.quote_amount || 0}`,
       leadId: lead.id,
       priority: "medium",
@@ -2086,6 +2377,19 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+// Returns a compact elapsed-time label that never produces values like "162h ago".
+// Under 24 hours → hours only; 24+ hours → days + remainder hours.
+export function formatElapsed(ms: number): string {
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(ms / 3600000)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(ms / 86400000)
+  const remHours = hours - days * 24
+  return remHours > 0 ? `${days}d ${remHours}h ago` : `${days}d ago`
+}
+
 export function formatRelativeTime(date: string | Date): string {
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
@@ -2107,13 +2411,34 @@ export function formatRelativeTime(date: string | Date): string {
 
 export interface FinanceTransaction {
   id: string
-  date: string              // ISO string
+  date: string
   type: "income" | "expense"
-  category: string          // service_type or expense category key
-  description: string       // label for display
-  client: string            // customer_name or vendor
+  source_type: "manual" | "synced"
+  category: string
+  description: string
+  client: string
   amount: number
   status: "collected" | "scheduled" | "pending" | "cleared"
+  payment_method?: string | null
+  editable: boolean
+  deletable: boolean
+  raw_expense_id?: string        // set when sourced from expenses table
+  raw_transaction_id?: string    // set when sourced from transactions table
+  lead_id?: string               // set for synced income rows
+}
+
+// Manual transaction insert shape (mirrors transactions DB table)
+export interface TransactionInsert {
+  type: "income" | "expense"
+  category?: string | null
+  description?: string | null
+  amount: number
+  transaction_date: string   // YYYY-MM-DD
+  payment_method?: string | null
+  status?: string | null
+  client_id?: string | null
+  lead_id?: string | null
+  source_type?: string
 }
 
 export interface FinanceChartBar {
@@ -2288,6 +2613,34 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     ])
   )
 
+  // Fetch manual transactions in range (income + expense entered via Finance UI)
+  const { data: manualTxRaw, error: manualTxError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("company_id", companyId)
+    .gte("transaction_date", startDateStr)
+    .lt("transaction_date", endDateStr)
+    .order("transaction_date", { ascending: false })
+
+  if (manualTxError) {
+    console.error("Error fetching manual transactions:", manualTxError.message,
+      "— Run the SQL migration in supabase/migrations/20260409_add_transactions.sql if table is missing.")
+  }
+
+  const manualTransactions = (manualTxRaw || []) as {
+    id: string; type: string; source_type: string; category: string | null
+    description: string | null; amount: number; transaction_date: string
+    payment_method: string | null; status: string | null; client_id: string | null
+    editable: boolean; deletable: boolean
+  }[]
+
+  const manualIncome = manualTransactions
+    .filter(t => t.type === "income")
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+  const manualExpenseAmount = manualTransactions
+    .filter(t => t.type === "expense")
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+
   // Fetch recent activity
   const { data: activities, error: activitiesError } = await supabase
     .from("activity_log")
@@ -2322,18 +2675,26 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
   // Revenue-bearing leads in range (scheduled + completed)
   const scheduledLeads = rangeLeads.filter(l => isScheduledStatus(l.status))
   const completedLeads = rangeLeads.filter(l => isCompletedStatus(l.status))
-  const scheduledRevenue = scheduledLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  const collectedRevenue = completedLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
-  const totalRevenue = scheduledRevenue + collectedRevenue
-  const outstandingAmount = scheduledRevenue
+  const leadScheduledRevenue = scheduledLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
+  const leadCollectedRevenue = completedLeads.reduce((sum, l) => sum + (l.quote_amount || 0), 0)
+  const outstandingAmount = leadScheduledRevenue
   const outstandingCount = scheduledLeads.length
   const jobCount = scheduledLeads.length + completedLeads.length
-  const avgJobSize = jobCount > 0 ? Math.round(totalRevenue / jobCount) : 0
 
-  // Real expenses from DB
-  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+  // Combined revenue: lead/job revenue + manual income from transactions table
+  const manualIncomeCount = manualTransactions.filter(t => t.type === "income").length
+  const scheduledRevenue = leadScheduledRevenue
+  const collectedRevenue = leadCollectedRevenue + manualIncome  // manual income counts as collected
+  const totalRevenue = scheduledRevenue + collectedRevenue      // full picture
+  const totalJobCount = jobCount + manualIncomeCount
+  const avgJobSize = totalJobCount > 0 ? Math.round(totalRevenue / totalJobCount) : 0
+
+  // Expenses from DB + manual expense entries from transactions table
+  const totalExpenses = rangeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) + manualExpenseAmount
   const grossProfit = totalRevenue - totalExpenses
-  const profitMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0
+  const profitMargin = totalRevenue > 0
+    ? Math.round((grossProfit / totalRevenue) * 100)
+    : 0
 
   // Expenses grouped by category
   const categoryMap = new Map<string, { label: string; amount: number; count: number }>()
@@ -2381,37 +2742,65 @@ export async function getFinanceData(range = "this-month"): Promise<FinanceData 
     }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // Income transactions — scheduled + completed leads in range
+  // Income transactions — scheduled + completed leads in range (synced, read-only)
   const incomeTransactions: FinanceTransaction[] = rangeLeads
     .filter(l => isScheduledStatus(l.status) || isCompletedStatus(l.status))
     .map(l => ({
       id: l.id,
       date: edFn(l).toISOString(),
       type: "income" as const,
+      source_type: "synced" as const,
       category: l.service_type || "Service",
       description: l.service_type || "Job",
       client: l.customer_name || "Client",
       amount: l.quote_amount || 0,
       status: isCompletedStatus(l.status) ? "collected" as const : "scheduled" as const,
+      editable: false,
+      deletable: false,
+      lead_id: l.id,
     }))
 
-  // Expense transactions from real DB rows
+  // Expense transactions from real DB rows (manual, fully editable)
   const expenseTransactions: FinanceTransaction[] = rangeExpenses.map(e => ({
     id: e.id,
     date: e.expense_date
       ? new Date(e.expense_date + "T00:00:00").toISOString()
       : e.created_at,
     type: "expense" as const,
+    source_type: "manual" as const,
     category: e.expense_categories?.key || "uncategorized",
     description: e.description || e.expense_categories?.label || "Expense",
     client: e.vendor || "—",
     amount: e.amount || 0,
     status: (e.status as "pending" | "cleared") || "pending",
+    editable: true,
+    deletable: true,
+    raw_expense_id: e.id,
+  }))
+
+  // Manual transaction rows (income or expense entered via Finance UI)
+  const manualTxTransactions: FinanceTransaction[] = manualTransactions.map(t => ({
+    id: t.id,
+    date: new Date(t.transaction_date + "T00:00:00").toISOString(),
+    type: t.type as "income" | "expense",
+    source_type: "manual" as const,
+    category: t.category || (t.type === "income" ? "Income" : "Expense"),
+    description: t.description || (t.type === "income" ? "Manual income" : "Manual expense"),
+    client: "—",
+    amount: t.amount || 0,
+    status: (t.status as "pending" | "cleared" | "collected") || (t.type === "income" ? "collected" : "cleared"),
+    payment_method: t.payment_method || null,
+    editable: t.editable,
+    deletable: t.deletable,
+    raw_transaction_id: t.id,
   }))
 
   // All transactions sorted newest first
-  const periodTransactions: FinanceTransaction[] = [...incomeTransactions, ...expenseTransactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const periodTransactions: FinanceTransaction[] = [
+    ...incomeTransactions,
+    ...expenseTransactions,
+    ...manualTxTransactions,
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   // Chart data bucketed by period
   const chartData = buildFinanceChartData(allLeads, rangeExpenses, range, rangeStart, rangeEnd)
@@ -2464,5 +2853,145 @@ export async function createExpense(expense: ExpenseInsert): Promise<boolean> {
     console.error("Error creating expense:", error)
     return false
   }
+  await logActivity({
+    company_id: companyId,
+    activity_type: "expense_added",
+    title: "Expense added",
+    description: `Expense — ${expense.description || "Expense"} for $${expense.amount}`,
+  })
+  return true
+}
+
+export async function updateExpense(id: string, updates: Partial<ExpenseInsert>): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("expenses")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId)
+  if (error) { console.error("Error updating expense:", error); return false }
+  return true
+}
+
+export async function deleteExpense(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+  if (error) { console.error("Error deleting expense:", error); return false }
+  return true
+}
+
+// Create a completed lead/job record from a manual income entry.
+// Called when the user opts into CRM syncing from the Add Income modal.
+export async function createCompletedLeadFromIncome(params: {
+  customerName: string
+  serviceType: string
+  amount: number
+  transactionDate: string // YYYY-MM-DD
+  description?: string | null
+}): Promise<string | null> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return null
+
+  const now = new Date().toISOString()
+  const completedAt = new Date(params.transactionDate + "T12:00:00").toISOString()
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      company_id: companyId,
+      customer_name: params.customerName || "Manual Entry",
+      phone: "",
+      service_type: params.serviceType || "Other",
+      status: "completed",
+      quote_amount: params.amount,
+      source: "manual_income",
+      message: params.description || null,
+      completed_at: completedAt,
+      created_at: now,
+      updated_at: now,
+    })
+    .select("id")
+    .single()
+
+  if (error) {
+    console.error("Error creating completed lead from income:", error)
+    return null
+  }
+
+  const leadId = (data as { id: string }).id
+
+  await logActivity({
+    lead_id: leadId,
+    company_id: companyId,
+    activity_type: "job_completed",
+    title: "Job completed (from manual income)",
+    description: `${params.customerName || "Manual Entry"} — ${params.serviceType || "Service"} completed for $${params.amount}`,
+  })
+
+  return leadId
+}
+
+export async function createTransaction(tx: TransactionInsert): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from("transactions")
+    .insert({
+      ...tx,
+      company_id: companyId,
+      created_by: user?.id ?? null,
+      source_type: tx.source_type ?? "manual",
+      editable: true,
+      deletable: true,
+    })
+  if (error) { console.error("Error creating transaction:", error); return false }
+  // Log to activity feed
+  await logActivity({
+    company_id: companyId,
+    activity_type: tx.type === "income" ? "income_added" : "expense_added",
+    title: tx.type === "income" ? "Manual income added" : "Manual expense added",
+    description: tx.type === "income"
+      ? `Manual income — ${tx.category || "Income"} for $${tx.amount}`
+      : `Expense — ${tx.description || tx.category || "Expense"} for $${tx.amount}`,
+  })
+  return true
+}
+
+export async function updateTransaction(id: string, updates: Partial<TransactionInsert>): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("transactions")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("editable", true)
+  if (error) { console.error("Error updating transaction:", error); return false }
+  return true
+}
+
+export async function deleteTransaction(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return false
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("deletable", true)
+  if (error) { console.error("Error deleting transaction:", error); return false }
   return true
 }

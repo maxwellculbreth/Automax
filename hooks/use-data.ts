@@ -14,11 +14,16 @@ import {
   getMessages,
   createMessage,
   markMessagesRead,
+  getScheduledMessages,
+  createScheduledMessage,
+  cancelScheduledMessage,
   getAutomations,
   updateAutomation,
   getActivities,
   getJobs,
   getUpcomingJobs,
+  getTodayJobs,
+  getWeekJobs,
   getBusiness,
   updateBusiness,
   getUsers,
@@ -30,8 +35,14 @@ import {
   getFinanceData,
   getExpenseCategories,
   createExpense,
+  updateExpense,
+  deleteExpense,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
   type Lead,
   type Message,
+  type ScheduledMessage,
   type Automation,
   type Activity,
   type Job,
@@ -43,9 +54,11 @@ import {
   type Company,
   type FinanceData,
   type DateRangeKey,
+  type CustomDateRange,
   type ExpenseCategory,
+  type TransactionInsert,
 } from "@/lib/data-service"
-import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert } from "@/lib/database.types"
+import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert, ScheduledMessageInsert } from "@/lib/database.types"
 
 // ============================================================================
 // LEADS
@@ -192,6 +205,54 @@ export function useMarkMessagesRead() {
 }
 
 // ============================================================================
+// SCHEDULED MESSAGES
+// ============================================================================
+
+export function useScheduledMessages(leadId?: string) {
+  const key = leadId ? `scheduled-messages-${leadId}` : "scheduled-messages"
+  const { data, error, isLoading, mutate } = useSWR<ScheduledMessage[]>(
+    key,
+    () => getScheduledMessages(leadId),
+    { refreshInterval: 30000 }
+  )
+
+  return {
+    scheduledMessages: data ?? [],
+    isLoading,
+    isError: !!error,
+    mutate,
+  }
+}
+
+export function useCreateScheduledMessage() {
+  const { trigger, isMutating } = useSWRMutation(
+    "scheduled-messages",
+    async (_key: string, { arg }: { arg: Omit<ScheduledMessageInsert, "company_id"> }) => {
+      return await createScheduledMessage(arg)
+    }
+  )
+
+  return {
+    scheduleMessage: trigger,
+    isScheduling: isMutating,
+  }
+}
+
+export function useCancelScheduledMessage() {
+  const { trigger, isMutating } = useSWRMutation(
+    "scheduled-messages",
+    async (_key: string, { arg }: { arg: string }) => {
+      return await cancelScheduledMessage(arg)
+    }
+  )
+
+  return {
+    cancelMessage: trigger,
+    isCancelling: isMutating,
+  }
+}
+
+// ============================================================================
 // AUTOMATIONS
 // ============================================================================
 
@@ -273,6 +334,24 @@ export function useUpcomingJobs(limit = 5) {
   }
 }
 
+export function useTodayJobs() {
+  const { data, error, isLoading, mutate } = useSWR<Job[]>(
+    "today-jobs",
+    getTodayJobs,
+    { refreshInterval: 60000 }
+  )
+  return { jobs: data ?? [], isLoading, isError: !!error, mutate }
+}
+
+export function useWeekJobs() {
+  const { data, error, isLoading, mutate } = useSWR<Job[]>(
+    "week-jobs",
+    getWeekJobs,
+    { refreshInterval: 60000 }
+  )
+  return { jobs: data ?? [], isLoading, isError: !!error, mutate }
+}
+
 // ============================================================================
 // BUSINESS
 // ============================================================================
@@ -332,13 +411,15 @@ export function useCurrentUser() {
 // DASHBOARD
 // ============================================================================
 
-export function useDashboardKPIs(range: DateRangeKey = "week") {
+export function useDashboardKPIs(range: DateRangeKey = "week", customRange?: CustomDateRange) {
+  const cacheKey = customRange
+    ? `dashboard-kpis-custom-${customRange.from.toISOString().slice(0, 10)}-${customRange.to.toISOString().slice(0, 10)}`
+    : `dashboard-kpis-${range}`
+
   const { data, error, isLoading, mutate } = useSWR<DashboardKPIs>(
-    `dashboard-kpis-${range}`,
-    () => getDashboardKPIs(range),
-    {
-      refreshInterval: 60000,
-    }
+    cacheKey,
+    () => getDashboardKPIs(range, customRange),
+    { refreshInterval: 60000 }
   )
 
   return {
@@ -440,24 +521,80 @@ export function useExpenseCategories() {
   }
 }
 
+// Shared invalidation helper for all finance mutations
+const invalidateFinance = () => {
+  const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
+  return Promise.all(ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true })))
+}
+
 export function useCreateExpense() {
   const { trigger, isMutating } = useSWRMutation(
     "create-expense",
     async (_key: string, { arg }: { arg: ExpenseInsert }) => {
       const success = await createExpense(arg)
-      if (success) {
-        // Invalidate all finance-data range keys so the Finance page re-fetches
-        const ranges = ["this-week", "this-month", "last-30", "this-quarter", "ytd"]
-        await Promise.all(
-          ranges.map(r => globalMutate(`finance-data-${r}`, undefined, { revalidate: true }))
-        )
-      }
+      if (success) await invalidateFinance()
       return success
     }
   )
+  return { createExpense: trigger, isCreating: isMutating }
+}
 
-  return {
-    createExpense: trigger,
-    isCreating: isMutating,
-  }
+export function useUpdateExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "update-expense",
+    async (_key: string, { arg }: { arg: { id: string; updates: Partial<ExpenseInsert> } }) => {
+      const success = await updateExpense(arg.id, arg.updates)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { updateExpense: trigger, isUpdating: isMutating }
+}
+
+export function useDeleteExpense() {
+  const { trigger, isMutating } = useSWRMutation(
+    "delete-expense",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteExpense(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { deleteExpense: trigger, isDeleting: isMutating }
+}
+
+export function useCreateTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "create-transaction",
+    async (_key: string, { arg }: { arg: TransactionInsert }) => {
+      const success = await createTransaction(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { createTransaction: trigger, isCreating: isMutating }
+}
+
+export function useUpdateTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "update-transaction",
+    async (_key: string, { arg }: { arg: { id: string; updates: Partial<TransactionInsert> } }) => {
+      const success = await updateTransaction(arg.id, arg.updates)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { updateTransaction: trigger, isUpdating: isMutating }
+}
+
+export function useDeleteTransaction() {
+  const { trigger, isMutating } = useSWRMutation(
+    "delete-transaction",
+    async (_key: string, { arg }: { arg: string }) => {
+      const success = await deleteTransaction(arg)
+      if (success) await invalidateFinance()
+      return success
+    }
+  )
+  return { deleteTransaction: trigger, isDeleting: isMutating }
 }

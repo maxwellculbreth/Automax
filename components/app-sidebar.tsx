@@ -19,6 +19,8 @@ import {
   TrendingUp,
   Star,
   FileText,
+  Users,
+  ShieldCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -31,9 +33,11 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Quotes", href: "/quotes", icon: FileText },
+  { name: "Clients", href: "/clients", icon: Users },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
-  { name: "Reviews",   href: "/reviews",   icon: Star,     pro: true },
+  { name: "Reviews",    href: "/reviews",    icon: Star,         pro: true },
+  { name: "Reputation", href: "/reputation", icon: ShieldCheck,  pro: true },
   { name: "Automations", href: "/automations", icon: Zap },
   { name: "AI Assistant", href: "/assistant", icon: Bot },
   { name: "Autome", href: "/autome", icon: Sparkles, max: true },
@@ -73,7 +77,7 @@ export function AppSidebar() {
             </svg>
           </div>
           <span className="text-[14px] tracking-tight select-none">
-            <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
+            <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-blue-500 dark:text-blue-400">max</span>
           </span>
         </div>
       </div>
@@ -117,7 +121,7 @@ export function AppSidebar() {
               </div>
               {!collapsed && (
                 <span className="text-[15px] tracking-tight select-none">
-                  <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-foreground/50">max</span>
+                  <span className="font-semibold text-foreground">Auto</span><span className="font-medium text-blue-500 dark:text-blue-400">max</span>
                 </span>
               )}
             </Link>
@@ -136,8 +140,8 @@ export function AppSidebar() {
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
                       isActive
-                        ? "bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                        ? "bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                       collapsed && "justify-center px-2"
                     )}
                   >
@@ -174,8 +178,8 @@ export function AppSidebar() {
               href="/settings"
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground",
-                pathname === "/settings" && "bg-primary/10 text-primary dark:bg-primary/15",
+                "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground",
+                pathname === "/settings" && "bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400",
                 collapsed && "justify-center px-2"
               )}
             >
