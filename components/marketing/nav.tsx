@@ -9,11 +9,24 @@ import {
   Bot, Bell, Calendar, Zap, TrendingUp,
   Droplets, Leaf, Sparkles, Car,
   BookOpen, CalendarDays, HelpCircle, Calculator,
+  BrainCircuit,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type NavItem = { label: string; desc: string; href: string; icon: React.ElementType }
-type NavMenu = { label: string; cols: 2 | 3; items: NavItem[] }
+type NavItem = {
+  label: string
+  desc: string
+  href: string
+  icon: React.ElementType
+  badge?: string
+}
+
+type NavMenu = {
+  label: string
+  cols: 2 | 3
+  items: NavItem[]
+  featuredItem?: NavItem & { tagline?: string }
+}
 
 const NAV_MENUS: Record<string, NavMenu> = {
   platform: {
@@ -42,32 +55,39 @@ const NAV_MENUS: Record<string, NavMenu> = {
   automation: {
     label: 'Automation',
     cols: 2,
+    featuredItem: {
+      label: 'AutoMe',
+      desc: 'AI that learns how you run the business — your pricing, your voice, your way of working.',
+      tagline: 'Flagship AI',
+      href: '/automation/autome',
+      icon: BrainCircuit,
+    },
     items: [
-      { label: 'AI Assistant',        desc: 'Qualifies leads and drafts replies',    href: '#', icon: Bot },
-      { label: 'Smart Follow-Ups',    desc: 'Never let a lead go cold again',        href: '#', icon: Bell },
-      { label: 'Scheduling',          desc: 'Book jobs without the back-and-forth',  href: '#', icon: Calendar },
-      { label: 'Workflow Automation', desc: 'Build custom trigger-action sequences', href: '#', icon: Zap },
-      { label: 'Revenue Insights',    desc: 'Forecast and track growth over time',   href: '#', icon: TrendingUp },
+      { label: 'AI Assistant',        desc: 'Qualifies leads and drafts replies',    href: '/automation/ai-assistant',        icon: Bot },
+      { label: 'Smart Follow-Ups',    desc: 'Never let a lead go cold again',        href: '/automation/smart-follow-ups',    icon: Bell },
+      { label: 'Scheduling',          desc: 'Book jobs without the back-and-forth',  href: '/automation/scheduling',          icon: Calendar },
+      { label: 'Workflow Automation', desc: 'Build custom trigger-action sequences', href: '/automation/workflow-automation', icon: Zap },
+      { label: 'Revenue Insights',    desc: 'Forecast and track growth over time',   href: '/automation/revenue-insights',    icon: TrendingUp },
     ],
   },
   industries: {
     label: 'Industries',
     cols: 2,
     items: [
-      { label: 'Pressure Washing', desc: 'Built for wash pros',      href: '#', icon: Droplets },
-      { label: 'Landscaping',      desc: 'Manage seasonal volume',   href: '#', icon: Leaf },
-      { label: 'Cleaning',         desc: 'Recurring client tools',   href: '#', icon: Sparkles },
-      { label: 'Mobile Detailing', desc: 'Route and book faster',    href: '#', icon: Car },
+      { label: 'Pressure Washing', desc: 'Built for wash pros',      href: '/industries/pressure-washing', icon: Droplets },
+      { label: 'Landscaping',      desc: 'Manage seasonal volume',   href: '/industries/landscaping',      icon: Leaf },
+      { label: 'Cleaning',         desc: 'Recurring client tools',   href: '/industries/cleaning',         icon: Sparkles },
+      { label: 'Mobile Detailing', desc: 'Route and book faster',    href: '/industries/mobile-detailing', icon: Car },
     ],
   },
   resources: {
     label: 'Resources',
     cols: 2,
     items: [
-      { label: 'Case Studies',   desc: 'See how contractors grow with Automax', href: '#', icon: BookOpen },
-      { label: 'Book a Demo',    desc: 'See the platform live in 20 minutes',   href: '#', icon: CalendarDays },
-      { label: 'Help Center',    desc: 'Guides, docs, and support',             href: '#', icon: HelpCircle },
-      { label: 'ROI Calculator', desc: 'Estimate your growth potential',        href: '#', icon: Calculator },
+      { label: 'Case Studies',   desc: 'See how contractors grow with Automax', href: '/resources/case-studies',   icon: BookOpen },
+      { label: 'Book a Demo',    desc: 'See the platform live in 20 minutes',   href: '/resources/book-a-demo',    icon: CalendarDays },
+      { label: 'Help Center',    desc: 'Guides, docs, and support',             href: '/resources/help-center',    icon: HelpCircle },
+      { label: 'ROI Calculator', desc: 'Estimate your growth potential',        href: '/resources/roi-calculator', icon: Calculator },
     ],
   },
 }
@@ -181,6 +201,32 @@ export function MarketingNav() {
           className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-8px_rgba(0,0,0,0.6)]"
         >
           <div className="mx-auto max-w-7xl px-8 py-5">
+
+            {/* Featured item (AutoMe) */}
+            {menu.featuredItem && (() => {
+              const FeaturedIcon = menu.featuredItem.icon
+              return (
+                <Link
+                  href={menu.featuredItem.href}
+                  className="flex items-center gap-4 rounded-xl px-4 py-3.5 mb-3 bg-gradient-to-r from-indigo-600/12 via-purple-600/8 to-transparent border border-indigo-500/20 hover:border-indigo-400/35 hover:from-indigo-600/18 hover:via-purple-600/12 transition-all duration-200 group max-w-[640px]"
+                >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-600/20 ring-1 ring-indigo-400/30 group-hover:ring-indigo-400/50 transition-colors">
+                    <FeaturedIcon className="h-5 w-5 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[14px] font-bold text-white group-hover:text-white transition-colors">{menu.featuredItem.label}</span>
+                      {menu.featuredItem.tagline && (
+                        <span className="text-[10px] font-semibold tracking-wide text-indigo-300 bg-indigo-500/15 border border-indigo-400/20 rounded-full px-2 py-0.5">{menu.featuredItem.tagline}</span>
+                      )}
+                    </div>
+                    <div className="text-[12.5px] text-white/45 group-hover:text-white/60 transition-colors leading-snug">{menu.featuredItem.desc}</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-white/20 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                </Link>
+              )
+            })()}
+
             <div
               className={cn(
                 'grid',
@@ -221,6 +267,23 @@ export function MarketingNav() {
                 <div className="px-3 py-2 text-[11px] font-semibold text-white/35 uppercase tracking-wider">
                   {NAV_MENUS[key].label}
                 </div>
+                {/* Featured item on mobile */}
+                {NAV_MENUS[key].featuredItem && (() => {
+                  const fi = NAV_MENUS[key].featuredItem!
+                  const FiIcon = fi.icon
+                  return (
+                    <Link
+                      key={fi.label}
+                      href={fi.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-[14px] font-semibold text-indigo-300 hover:text-white transition-colors"
+                    >
+                      <FiIcon className="h-3.5 w-3.5 text-indigo-400 flex-shrink-0" />
+                      {fi.label}
+                      {fi.tagline && <span className="text-[10px] text-indigo-400/70 font-normal ml-1">— {fi.tagline}</span>}
+                    </Link>
+                  )
+                })()}
                 {NAV_MENUS[key].items.map(item => {
                   const Icon = item.icon
                   return (
