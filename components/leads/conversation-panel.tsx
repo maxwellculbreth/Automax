@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -47,10 +48,11 @@ export function ConversationPanel({
   onToggleDetails,
   showDetails,
 }: ConversationPanelProps) {
+  const router = useRouter()
   const [message, setMessage] = useState("")
   const [showAISuggestion, setShowAISuggestion] = useState(true)
   const [copiedSuggestion, setCopiedSuggestion] = useState(false)
-  
+
   const { messages, isLoading: messagesLoading, mutate: mutateMessages } = useMessages(lead?.id ?? null)
   const { createMessage, isSending } = useCreateMessage()
   const { updateLead } = useUpdateLead()
@@ -118,6 +120,28 @@ export function ConversationPanel({
 
   const handleStatusChange = async (status: Lead["status"]) => {
     await updateLead({ id: lead.id, updates: { status } })
+  }
+
+  const openSendQuote = () => {
+    const params = new URLSearchParams()
+    if (lead.id) params.set('lead_id', lead.id)
+    if (lead.name) params.set('customer_name', lead.name)
+    if (lead.phone) params.set('customer_phone', lead.phone)
+    if (lead.email) params.set('customer_email', lead.email)
+    if (lead.address) params.set('property_address', lead.address)
+    router.push(`/quotes/new?${params.toString()}`)
+  }
+
+  const openBookJob = () => {
+    const params = new URLSearchParams()
+    if (lead.id) params.set('lead_id', lead.id)
+    if (lead.name) params.set('customer_name', lead.name)
+    if (lead.phone) params.set('customer_phone', lead.phone)
+    if (lead.email) params.set('customer_email', lead.email)
+    if (lead.address) params.set('address', lead.address)
+    if (lead.service) params.set('service_type', lead.service)
+    if (lead.estimated_value) params.set('price', String(lead.estimated_value))
+    router.push(`/jobs/new?${params.toString()}`)
   }
 
   return (
@@ -355,16 +379,25 @@ export function ConversationPanel({
           </Button>
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <Button variant="outline" size="sm" className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none" onClick={() => handleStatusChange("quoted")}>
+          <Button
+            size="sm"
+            className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white border-0"
+            onClick={openSendQuote}
+          >
             <FileText className="h-3 w-3 mr-1" />
             Send Quote
           </Button>
-          <Button variant="outline" size="sm" className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none" onClick={() => handleStatusChange("scheduled")}>
+          <Button
+            size="sm"
+            className="h-8 sm:h-7 text-[12px] sm:text-[11px] flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+            onClick={openBookJob}
+          >
             <CalendarCheck className="h-3 w-3 mr-1" />
             Book Job
           </Button>
         </div>
       </div>
+
     </div>
   )
 }

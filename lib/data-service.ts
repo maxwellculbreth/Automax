@@ -709,64 +709,6 @@ const mockActivities: Activity[] = [
   },
 ]
 
-// Mock jobs
-const mockJobs: Job[] = [
-  {
-    id: "job_001",
-    business_id: BUSINESS_ID,
-    lead_id: "lead_003",
-    assigned_to: "user_002",
-    title: "Full House Soft Wash",
-    description: "2,200 sq ft single story. Algae on north side. Gate code: 4521",
-    status: "scheduled",
-    scheduled_date: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString().split("T")[0],
-    scheduled_time: "08:00",
-    estimated_duration: 180,
-    actual_duration: null,
-    price: 475,
-    notes: null,
-    completed_at: null,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-  },
-  {
-    id: "job_002",
-    business_id: BUSINESS_ID,
-    lead_id: "lead_004",
-    assigned_to: "user_001",
-    title: "Restaurant Exterior - Crawfish Shack",
-    description: "Patio and sidewalk. Hot water unit needed for grease. URGENT - inspector Friday.",
-    status: "scheduled",
-    scheduled_date: new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString().split("T")[0],
-    scheduled_time: "06:00",
-    estimated_duration: 240,
-    actual_duration: null,
-    price: 875,
-    notes: "Early morning before they open",
-    completed_at: null,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: "job_003",
-    business_id: BUSINESS_ID,
-    lead_id: "lead_007",
-    assigned_to: "user_002",
-    title: "Driveway Cleaning",
-    description: "500 sq ft driveway",
-    status: "completed",
-    scheduled_date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString().split("T")[0],
-    scheduled_time: "10:00",
-    estimated_duration: 90,
-    actual_duration: 75,
-    price: 225,
-    notes: "Customer very happy",
-    completed_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-]
-
 // Mock AI generations
 const mockAIGenerations: AIGeneration[] = [
   {
@@ -1765,54 +1707,42 @@ export async function getActivities(limit = 20): Promise<Activity[]> {
 
 // Type for Supabase jobs table (matches actual schema)
 // Schema: id, company_id, lead_id, title, service_type, scheduled_at, price, address, notes, status, created_at, updated_at
-interface SupabaseJob {
-  id: string
-  company_id: string
-  lead_id: string
-  title: string
-  service_type: string | null
-  scheduled_at: string | null
-  price: number
-  address: string | null
-  notes: string | null
-  status: "scheduled" | "in_progress" | "completed" | "cancelled"
-  created_at: string
-  updated_at: string
-}
-
-// Map Supabase job to app Job type
-function mapSupabaseJobToJob(job: SupabaseJob): Job {
-  // Parse scheduled_at into date and time
-  let scheduledDate = ""
-  let scheduledTime: string | null = null
-  
-  if (job.scheduled_at) {
-    const date = new Date(job.scheduled_at)
-    scheduledDate = date.toISOString().split("T")[0]
-    scheduledTime = date.toLocaleTimeString("en-US", { 
-      hour: "numeric", 
-      minute: "2-digit",
-      hour12: true 
-    })
-  }
-
+// Map raw Supabase jobs row to app Job type.
+// The Job type now directly mirrors the real DB schema so this is essentially
+// a pass-through with minor coercion.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSupabaseJobToJob(row: any): Job {
   return {
-    id: job.id,
-    business_id: job.company_id, // Map company_id to business_id for app compatibility
-    lead_id: job.lead_id,
-    assigned_to: null, // Column doesn't exist in schema
-    title: job.title || job.service_type || "Job",
-    description: job.notes, // Use notes as description
-    status: job.status || "scheduled",
-    scheduled_date: scheduledDate,
-    scheduled_time: scheduledTime,
-    estimated_duration: null, // Column doesn't exist in schema
-    actual_duration: null, // Column doesn't exist in schema
-    price: job.price || 0,
-    notes: job.notes,
-    completed_at: null, // Column doesn't exist in schema
-    created_at: job.created_at,
-    updated_at: job.updated_at,
+    id: row.id,
+    company_id: row.company_id,
+    lead_id: row.lead_id,
+    quote_id: row.quote_id ?? null,
+    job_number: row.job_number ?? '',
+    title: row.title ?? '',
+    status: row.status ?? 'scheduled',
+    priority: row.priority ?? 'normal',
+    service_type: row.service_type ?? null,
+    customer_name: row.customer_name ?? '',
+    customer_phone: row.customer_phone ?? null,
+    customer_email: row.customer_email ?? null,
+    property_address: row.property_address ?? null,
+    city: row.city ?? null,
+    state: row.state ?? null,
+    zip: row.zip ?? null,
+    scheduled_date: row.scheduled_date ?? null,
+    start_time: row.start_time ?? null,
+    end_time: row.end_time ?? null,
+    duration_minutes: row.duration_minutes ?? null,
+    quoted_amount: Number(row.quoted_amount) || 0,
+    actual_amount: row.actual_amount != null ? Number(row.actual_amount) : null,
+    payment_status: row.payment_status ?? 'unpaid',
+    deposit_collected: row.deposit_collected ?? false,
+    assigned_to: row.assigned_to ?? null,
+    notes: row.notes ?? null,
+    completed_at: row.completed_at ?? null,
+    cancelled_at: row.cancelled_at ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   }
 }
 
@@ -1928,6 +1858,79 @@ export async function getWeekJobs(): Promise<Job[]> {
     return []
   }
   return (data || []).map((job: SupabaseJob) => mapSupabaseJobToJob(job))
+}
+
+// Fetch the most relevant active job for a given lead (for lead-details "View Job" action)
+export async function getJobByLeadId(leadId: string): Promise<Job | null> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return null
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('lead_id', leadId)
+    .in('status', ['scheduled', 'in_progress'])
+    .order('scheduled_date', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return mapSupabaseJobToJob(data)
+}
+
+// Fetch the most recent quote for a given lead (for lead-details "View Quote" action)
+export async function getQuoteByLeadId(
+  leadId: string
+): Promise<{ id: string; quote_number: string; status: string; total: number } | null> {
+  const supabase = createClient()
+  const companyId = await getCurrentUserCompanyId()
+  if (!companyId) return null
+
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('id, quote_number, status, total')
+    .eq('company_id', companyId)
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data as { id: string; quote_number: string; status: string; total: number }
+}
+
+export interface JobCreatePayload {
+  lead_id: string
+  quote_id?: string
+  title: string
+  service_type?: string
+  customer_name?: string
+  customer_phone?: string
+  customer_email?: string
+  property_address?: string
+  city?: string
+  state?: string
+  zip?: string
+  scheduled_date?: string
+  start_time?: string
+  end_time?: string
+  quoted_amount?: number
+  notes?: string
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
+  priority?: 'low' | 'normal' | 'high' | 'urgent'
+}
+
+export async function createJob(payload: JobCreatePayload): Promise<Job> {
+  const res = await fetch('/api/jobs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? 'Failed to create job')
+  return mapSupabaseJobToJob(data.job)
 }
 
 // ----- AI Generations -----

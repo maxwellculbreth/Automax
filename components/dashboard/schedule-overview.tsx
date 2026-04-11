@@ -7,14 +7,6 @@ import { Calendar, Clock, MapPin, Loader2, CheckCircle2, ChevronRight } from "lu
 import { formatCurrency } from "@/lib/data-service"
 import { cn } from "@/lib/utils"
 
-function formatTime(isoDate: string | null | undefined): string {
-  if (!isoDate) return "TBD"
-  return new Date(isoDate).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-}
 
 function formatWeekLabel(scheduledDate: string | null | undefined): string {
   if (!scheduledDate) return ""
@@ -101,17 +93,24 @@ export function ScheduleOverview() {
 
   const isLoading = todayLoading || weekLoading || leadsLoading
 
+  function formatStartTime(t: string | null | undefined): string | null {
+    if (!t) return null
+    const [h, m] = t.split(":").map(Number)
+    const ampm = h >= 12 ? "PM" : "AM"
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`
+  }
+
   function enrichJobs(jobs: typeof todayJobs): EnrichedJob[] {
     return jobs.map((job) => {
       const lead = leads.find((l) => l.id === job.lead_id)
       return {
         id: job.id,
-        customerName: lead?.name ?? "Unknown",
+        customerName: job.customer_name || lead?.name || "Unknown",
         title: job.title ?? "Untitled Job",
         scheduledDate: job.scheduled_date ?? null,
-        scheduledTime: job.scheduled_time ?? null,
-        price: job.price ?? 0,
-        address: lead?.address ?? null,
+        scheduledTime: formatStartTime(job.start_time),
+        price: job.quoted_amount ?? 0,
+        address: job.property_address ?? lead?.address ?? null,
         status: job.status ?? "scheduled",
       }
     })

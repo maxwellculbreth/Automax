@@ -22,6 +22,7 @@ interface QuoteFormProps {
   initialData?: Partial<Quote>
   mode: 'create' | 'edit'
   quoteId?: string
+  onCreated?: (quoteId: string) => void
 }
 
 const STATUS_OPTIONS: { value: QuoteStatus; label: string }[] = [
@@ -60,7 +61,7 @@ function detectExpiryPreset(isoDate: string): string {
   return 'custom'
 }
 
-export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
+export function QuoteForm({ initialData, mode, quoteId, onCreated }: QuoteFormProps) {
   const router = useRouter()
 
   const [title,           setTitle]           = useState(initialData?.title || '')
@@ -197,7 +198,11 @@ export function QuoteForm({ initialData, mode, quoteId }: QuoteFormProps) {
         })
         if (!res.ok) throw new Error('Failed to create quote')
         const { quote } = await res.json()
-        router.push(`/quotes/${quote.id}/edit`)
+        if (onCreated) {
+          onCreated(quote.id)
+        } else {
+          router.push(`/quotes/${quote.id}/edit`)
+        }
       } else {
         if (statusOverride) setStatus(statusOverride)
         const res = await fetch(`/api/quotes/${quoteId}`, {
