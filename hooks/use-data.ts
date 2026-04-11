@@ -24,6 +24,9 @@ import {
   getUpcomingJobs,
   getTodayJobs,
   getWeekJobs,
+  createJob,
+  getJobByLeadId,
+  getQuoteByLeadId,
   getBusiness,
   updateBusiness,
   getUsers,
@@ -57,6 +60,7 @@ import {
   type CustomDateRange,
   type ExpenseCategory,
   type TransactionInsert,
+  type JobCreatePayload,
 } from "@/lib/data-service"
 import type { LeadInsert, LeadUpdate, MessageInsert, AutomationUpdate, ExpenseInsert, ScheduledMessageInsert } from "@/lib/database.types"
 
@@ -350,6 +354,45 @@ export function useWeekJobs() {
     { refreshInterval: 60000 }
   )
   return { jobs: data ?? [], isLoading, isError: !!error, mutate }
+}
+
+export function useJobByLead(leadId: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<Job | null>(
+    leadId ? `job-by-lead-${leadId}` : null,
+    () => (leadId ? getJobByLeadId(leadId) : null),
+    { revalidateOnFocus: false }
+  )
+  return { job: data ?? null, isLoading, isError: !!error, mutate }
+}
+
+export function useQuoteByLead(leadId: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<{ id: string; quote_number: string; status: string; total: number } | null>(
+    leadId ? `quote-by-lead-${leadId}` : null,
+    () => (leadId ? getQuoteByLeadId(leadId) : null),
+    { revalidateOnFocus: false }
+  )
+  return { quote: data ?? null, isLoading, isError: !!error, mutate }
+}
+
+export function useCreateJob() {
+  const { mutate: mutateJobs } = useSWR<Job[]>("jobs")
+
+  const { trigger, isMutating } = useSWRMutation(
+    "jobs",
+    async (_key: string, { arg }: { arg: JobCreatePayload }) => {
+      const job = await createJob(arg)
+      mutateJobs(
+        (current: Job[] | undefined) => [job, ...(current ?? [])],
+        { revalidate: true }
+      )
+      return job
+    }
+  )
+
+  return {
+    createJob: trigger,
+    isCreating: isMutating,
+  }
 }
 
 // ============================================================================

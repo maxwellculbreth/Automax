@@ -145,6 +145,7 @@ function toDbQuotePayload(payload: Partial<Quote>, companyId: string, extra: Rec
     internal_notes: payload.notes || null,                  // notes → internal_notes
     deposit_required: payload.deposit_required ?? false,
     deposit_amount: Number(payload.deposit_amount) || 0,
+    lead_id: payload.lead_id ?? null,
     // deposit_type omitted — not a DB column
     // payment_status omitted — not a DB column
     ...extra,
@@ -214,7 +215,10 @@ export async function createQuote(
 ): Promise<{ id: string; quote_number: string }> {
   const quoteNumber = await generateQuoteNumber(supabase, companyId)
 
-  const dbPayload = toDbQuotePayload(payload, companyId, { quote_number: quoteNumber })
+  const dbPayload = toDbQuotePayload(payload, companyId, {
+    quote_number: quoteNumber,
+    public_token: crypto.randomUUID(),
+  })
 
   console.log('[createQuote] insert payload:', JSON.stringify(dbPayload, null, 2))
 
@@ -284,10 +288,11 @@ export async function sendQuoteToCustomer(
   quoteId: string,
   channel: 'sms' | 'email',
   companyId: string,
+  options?: { leadId?: string; baseUrl?: string },
 ): Promise<{ mock: boolean; channel: string; recipient: string }> {
   const { data: quote, error: qErr } = await supabase
     .from('quotes')
-    .select('customer_name, phone, email')   // DB column names
+    .select('customer_name, phone, email, public_token')
     .eq('id', quoteId)
     .eq('company_id', companyId)
     .single()
@@ -301,33 +306,60 @@ export async function sendQuoteToCustomer(
     )
   }
 
+  // Ensure a public_token exists for the share link
+  let token: string = quote.public_token
+  if (!token) {
+    token = crypto.randomUUID()
+    await supabase.from('quotes').update({ public_token: token }).eq('id', quoteId)
+  }
+
+  const publicUrl = options?.baseUrl ? `${options.baseUrl}/q/${token}` : null
   const firstName = (quote.customer_name ?? '').split(' ')[0] || 'there'
+
+  let smsBody: string
   let externalMessageId: string
   let mock: boolean
 
   if (channel === 'sms') {
+    smsBody = publicUrl
+      ? `Hi ${firstName}! Your quote from Automax is ready to view:\n${publicUrl}\n\nReply with any questions or to get scheduled.`
+      : `Hi ${firstName}! Your quote is ready. Reply here with any questions or to get scheduled.`
+
     const result = await sendSMS(supabase, {
       to: recipient,
-      body: `Hi ${firstName}! Your quote is ready. Reply here with any questions or to get scheduled.`,
+      body: smsBody,
       businessId: companyId,
     })
     externalMessageId = result.sid
     mock = result.mock
   } else {
+    smsBody = `Quote sent via email to ${recipient}`
     console.log(`[Email mock] to=${recipient} quoteId=${quoteId}`)
     externalMessageId = `mock_email_${Date.now()}`
     mock = true
   }
 
-  // Record delivery using real DB column names
+  // Record in quote_deliveries
   await supabase.from('quote_deliveries').insert({
     quote_id: quoteId,
     company_id: companyId,
-    delivery_method: channel,                   // channel → delivery_method
+    delivery_method: channel,
     recipient,
-    delivery_status: 'sent',                    // status → delivery_status
-    external_message_id: externalMessageId,     // provider_sid → external_message_id
+    delivery_status: 'sent',
+    external_message_id: externalMessageId,
   })
+
+  // Record in messages thread so it appears in the lead conversation
+  if (options?.leadId) {
+    await supabase.from('messages').insert({
+      lead_id: options.leadId,
+      company_id: companyId,
+      content: smsBody,
+      sender_type: 'business',
+      channel: 'sms',
+      is_read: true,
+    })
+  }
 
   // Update quote status
   await supabase
@@ -337,4 +369,27 @@ export async function sendQuoteToCustomer(
     .eq('company_id', companyId)
 
   return { mock, channel, recipient }
+}
+
+// ── Public quote fetch (by token, no auth) ────────────────────────────────────
+
+export async function getQuoteByPublicToken(
+  supabase: SupabaseClient,
+  token: string,
+): Promise<Quote | null> {
+  const { data: quote, error: qErr } = await supabase
+    .from('quotes')
+    .select('*')
+    .eq('public_token', token)
+    .single()
+
+  if (qErr || !quote) return null
+
+  const { data: items } = await supabase
+    .from('quote_items')
+    .select('*')
+    .eq('quote_id', quote.id)
+    .order('sort_order')
+
+  return dbRowToQuote(quote, items ?? [])
 }

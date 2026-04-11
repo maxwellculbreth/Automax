@@ -279,56 +279,98 @@ export interface Database {
       jobs: {
         Row: {
           id: string
-          business_id: string
+          company_id: string
           lead_id: string
-          assigned_to: string | null
+          quote_id: string | null
+          job_number: string
           title: string
-          description: string | null
-          status: "scheduled" | "in_progress" | "completed" | "cancelled"
-          scheduled_date: string
-          scheduled_time: string | null
-          estimated_duration: number | null
-          actual_duration: number | null
-          price: number
+          status: "scheduled" | "in_progress" | "completed" | "cancelled" | "on_hold"
+          priority: "low" | "normal" | "high" | "urgent"
+          service_type: string | null
+          customer_name: string
+          customer_phone: string | null
+          customer_email: string | null
+          property_address: string | null
+          city: string | null
+          state: string | null
+          zip: string | null
+          scheduled_date: string | null
+          start_time: string | null
+          end_time: string | null
+          duration_minutes: number | null
+          quoted_amount: number
+          actual_amount: number | null
+          payment_status: "unpaid" | "partial" | "paid"
+          deposit_collected: boolean
+          assigned_to: string[] | null
           notes: string | null
-          completed_at: string | null
           created_at: string
           updated_at: string
+          completed_at: string | null
+          cancelled_at: string | null
         }
         Insert: {
           id?: string
-          business_id: string
+          company_id: string
           lead_id: string
-          assigned_to?: string | null
+          quote_id?: string | null
+          job_number?: string
           title: string
-          description?: string | null
-          status?: "scheduled" | "in_progress" | "completed" | "cancelled"
-          scheduled_date: string
-          scheduled_time?: string | null
-          estimated_duration?: number | null
-          actual_duration?: number | null
-          price: number
+          status?: "scheduled" | "in_progress" | "completed" | "cancelled" | "on_hold"
+          priority?: "low" | "normal" | "high" | "urgent"
+          service_type?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          customer_email?: string | null
+          property_address?: string | null
+          city?: string | null
+          state?: string | null
+          zip?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          end_time?: string | null
+          duration_minutes?: number | null
+          quoted_amount?: number
+          actual_amount?: number | null
+          payment_status?: "unpaid" | "partial" | "paid"
+          deposit_collected?: boolean
+          assigned_to?: string[] | null
           notes?: string | null
-          completed_at?: string | null
           created_at?: string
           updated_at?: string
+          completed_at?: string | null
+          cancelled_at?: string | null
         }
         Update: {
           id?: string
-          business_id?: string
+          company_id?: string
           lead_id?: string
-          assigned_to?: string | null
+          quote_id?: string | null
+          job_number?: string
           title?: string
-          description?: string | null
-          status?: "scheduled" | "in_progress" | "completed" | "cancelled"
-          scheduled_date?: string
-          scheduled_time?: string | null
-          estimated_duration?: number | null
-          actual_duration?: number | null
-          price?: number
+          status?: "scheduled" | "in_progress" | "completed" | "cancelled" | "on_hold"
+          priority?: "low" | "normal" | "high" | "urgent"
+          service_type?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          customer_email?: string | null
+          property_address?: string | null
+          city?: string | null
+          state?: string | null
+          zip?: string | null
+          scheduled_date?: string | null
+          start_time?: string | null
+          end_time?: string | null
+          duration_minutes?: number | null
+          quoted_amount?: number
+          actual_amount?: number | null
+          payment_status?: "unpaid" | "partial" | "paid"
+          deposit_collected?: boolean
+          assigned_to?: string[] | null
           notes?: string | null
-          completed_at?: string | null
           updated_at?: string
+          completed_at?: string | null
+          cancelled_at?: string | null
         }
       }
       ai_generations: {

@@ -44,7 +44,12 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/pricing' ||
     request.nextUrl.pathname.startsWith('/platform') ||
-    request.nextUrl.pathname.startsWith('/growth')
+    request.nextUrl.pathname.startsWith('/growth') ||
+    request.nextUrl.pathname.startsWith('/automation') ||
+    request.nextUrl.pathname.startsWith('/industries') ||
+    request.nextUrl.pathname.startsWith('/resources') ||
+    request.nextUrl.pathname.startsWith('/q/') ||
+    request.nextUrl.pathname.startsWith('/api/q/')
   const isPublicRoute = isAuthRoute || isMarketingRoute
 
   if (!user && !isPublicRoute) {

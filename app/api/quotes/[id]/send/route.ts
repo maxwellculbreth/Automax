@@ -21,12 +21,16 @@ export async function POST(
   if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const { channel } = await req.json()
+    const { channel, lead_id } = await req.json()
     if (channel !== 'sms' && channel !== 'email') {
       return NextResponse.json({ error: 'channel must be "sms" or "email"' }, { status: 400 })
     }
 
-    const result = await sendQuoteToCustomer(supabase, id, channel, companyId)
+    const origin = req.headers.get('origin') ?? `https://${req.headers.get('host')}`
+    const result = await sendQuoteToCustomer(supabase, id, channel, companyId, {
+      leadId: lead_id ?? undefined,
+      baseUrl: origin,
+    })
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send quote'

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Inbox, FileText, Users, Kanban, BarChart2,
   Star, Globe, MousePointerClick, Mail, Shield,
   Bot, Bell, Calendar, Zap, TrendingUp,
-  Droplets, Leaf, Sparkles, Car,
+  Droplets, Leaf, Sparkles, Car, Bug, Waves, Trash2, Grid2x2,
   BookOpen, CalendarDays, HelpCircle, Calculator,
   BrainCircuit,
 } from 'lucide-react'
@@ -23,9 +23,10 @@ type NavItem = {
 
 type NavMenu = {
   label: string
-  cols: 2 | 3
+  cols: 2 | 3 | 4
   items: NavItem[]
   featuredItem?: NavItem & { tagline?: string }
+  footerLink?: { label: string; href: string }
 }
 
 const NAV_MENUS: Record<string, NavMenu> = {
@@ -72,13 +73,18 @@ const NAV_MENUS: Record<string, NavMenu> = {
   },
   industries: {
     label: 'Industries',
-    cols: 2,
+    cols: 4,
     items: [
-      { label: 'Pressure Washing', desc: 'Built for wash pros',      href: '/industries/pressure-washing', icon: Droplets },
-      { label: 'Landscaping',      desc: 'Manage seasonal volume',   href: '/industries/landscaping',      icon: Leaf },
-      { label: 'Cleaning',         desc: 'Recurring client tools',   href: '/industries/cleaning',         icon: Sparkles },
-      { label: 'Mobile Detailing', desc: 'Route and book faster',    href: '/industries/mobile-detailing', icon: Car },
+      { label: 'Pressure Washing', desc: 'Built for wash pros',         href: '/industries/pressure-washing', icon: Droplets },
+      { label: 'Landscaping',      desc: 'Manage seasonal volume',      href: '/industries/landscaping',      icon: Leaf },
+      { label: 'Cleaning',         desc: 'Recurring client tools',      href: '/industries/cleaning',         icon: Sparkles },
+      { label: 'Mobile Detailing', desc: 'Route and book faster',       href: '/industries/mobile-detailing', icon: Car },
+      { label: 'Pest Control',     desc: 'Route, quote, and follow up', href: '/industries/pest-control',     icon: Bug },
+      { label: 'Pool Service',     desc: 'Recurring route management',  href: '/industries/pool-service',     icon: Waves },
+      { label: 'Junk Removal',     desc: 'Fast quotes, full calendar',  href: '/industries/junk-removal',     icon: Trash2 },
+      { label: 'Window Cleaning',  desc: 'Residential & commercial',    href: '/industries/window-cleaning',  icon: Grid2x2 },
     ],
+    footerLink: { label: 'View all supported industries', href: '/industries' },
   },
   resources: {
     label: 'Resources',
@@ -200,7 +206,7 @@ export function MarketingNav() {
           onMouseLeave={scheduleClose}
           className="hidden lg:block absolute top-full inset-x-0 border-t border-white/8 bg-[#080f1e]/98 backdrop-blur-md shadow-[0_20px_60px_-8px_rgba(0,0,0,0.6)]"
         >
-          <div className="mx-auto max-w-7xl px-8 py-5">
+          <div className="mx-auto max-w-7xl px-10 py-7">
 
             {/* Featured item (AutoMe) */}
             {menu.featuredItem && (() => {
@@ -208,7 +214,7 @@ export function MarketingNav() {
               return (
                 <Link
                   href={menu.featuredItem.href}
-                  className="flex items-center gap-4 rounded-xl px-4 py-3.5 mb-3 bg-gradient-to-r from-indigo-600/12 via-purple-600/8 to-transparent border border-indigo-500/20 hover:border-indigo-400/35 hover:from-indigo-600/18 hover:via-purple-600/12 transition-all duration-200 group max-w-[640px]"
+                  className="flex items-center gap-4 rounded-xl px-5 py-4 mb-5 bg-gradient-to-r from-indigo-600/12 via-purple-600/8 to-transparent border border-indigo-500/20 hover:border-indigo-400/35 hover:from-indigo-600/18 hover:via-purple-600/12 transition-all duration-200 group max-w-[680px]"
                 >
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/30 to-purple-600/20 ring-1 ring-indigo-400/30 group-hover:ring-indigo-400/50 transition-colors">
                     <FeaturedIcon className="h-5 w-5 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
@@ -230,9 +236,11 @@ export function MarketingNav() {
             <div
               className={cn(
                 'grid',
-                menu.cols === 3
-                  ? 'grid-cols-3 gap-x-6 gap-y-0.5 max-w-[860px]'
-                  : 'grid-cols-2 gap-x-6 gap-y-0.5 max-w-[580px]',
+                menu.cols === 4
+                  ? 'grid-cols-4 gap-x-5 gap-y-1 max-w-[1080px]'
+                  : menu.cols === 3
+                  ? 'grid-cols-3 gap-x-8 gap-y-1 max-w-[960px]'
+                  : 'grid-cols-2 gap-x-8 gap-y-1 max-w-[660px]',
               )}
             >
               {menu.items.map(item => {
@@ -241,7 +249,7 @@ export function MarketingNav() {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className="flex items-start gap-3.5 rounded-xl px-3.5 py-3 hover:bg-white/[0.05] transition-colors group"
+                    className="flex items-start gap-3.5 rounded-xl px-4 py-3.5 hover:bg-white/[0.05] transition-colors group"
                   >
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/10 group-hover:bg-blue-600/15 group-hover:ring-blue-500/25 transition-colors mt-0.5">
                       <Icon className="h-4 w-4 text-white/40 group-hover:text-blue-400 transition-colors" />
@@ -254,6 +262,18 @@ export function MarketingNav() {
                 )
               })}
             </div>
+
+            {menu.footerLink && (
+              <div className="mt-4 pt-4 border-t border-white/8">
+                <Link
+                  href={menu.footerLink.href}
+                  className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-white/40 hover:text-blue-300 transition-colors group"
+                >
+                  {menu.footerLink.label}
+                  <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}

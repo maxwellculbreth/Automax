@@ -21,6 +21,7 @@ import {
   FileText,
   Users,
   ShieldCheck,
+  CalendarCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -33,6 +34,7 @@ const navigation: { name: string; href: string; icon: React.ElementType; badge?:
   { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Quotes", href: "/quotes", icon: FileText },
+  { name: "Jobs", href: "/jobs", icon: CalendarCheck },
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Marketing", href: "/marketing", icon: Megaphone, pro: true },
@@ -93,7 +95,7 @@ export function AppSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen bg-card border-r border-border transition-all duration-200 ease-in-out",
+          "fixed left-0 top-0 z-50 h-dvh bg-card border-r border-border transition-all duration-200 ease-in-out",
           collapsed ? "w-[68px]" : "w-60",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
