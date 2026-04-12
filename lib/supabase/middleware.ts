@@ -43,6 +43,9 @@ export async function updateSession(request: NextRequest) {
   const isMarketingRoute =
     request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname === '/early-access' ||
+    request.nextUrl.pathname === '/features' ||
+    request.nextUrl.pathname.startsWith('/waitlist') ||
+    request.nextUrl.pathname === '/api/waitlist' ||
     request.nextUrl.pathname === '/pricing' ||
     request.nextUrl.pathname.startsWith('/platform') ||
     request.nextUrl.pathname.startsWith('/growth') ||

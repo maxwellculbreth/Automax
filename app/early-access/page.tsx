@@ -2,15 +2,17 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   ArrowRight,
+  Check,
   Zap,
   Users,
   FileText,
   Star,
   TrendingUp,
   Bot,
-  Check,
 } from 'lucide-react'
 import { MarketingShell } from '@/components/marketing/marketing-shell'
+import { PublicNav } from '@/components/public/public-nav'
+import { PublicFooter } from '@/components/public/public-footer'
 
 export const metadata: Metadata = {
   title: 'Automax — Coming Soon',
@@ -24,82 +26,6 @@ const BLUE_BTN =
   'inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 px-6 py-3 text-[14px] font-semibold text-white shadow-[0_2px_14px_rgba(59,130,246,0.40)] hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_4px_24px_rgba(59,130,246,0.55)] hover:-translate-y-px active:translate-y-0 transition-all duration-150'
 const GHOST_BTN =
   'inline-flex items-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-[14px] font-semibold text-white/70 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all duration-150'
-
-// ── Logo mark ─────────────────────────────────────────────────────────────────
-
-function LogoMark({ size = 32 }: { size?: number }) {
-  const icon = Math.round(size * 0.53)
-  return (
-    <div
-      className="flex items-center justify-center rounded-[7px] bg-gradient-to-br from-blue-500 to-indigo-700 shadow-[0_2px_10px_rgba(59,130,246,0.35)] flex-shrink-0"
-      style={{ width: size, height: size }}
-    >
-      <svg width={icon} height={icon} viewBox="0 0 20 20" fill="none">
-        <path
-          d="M4 16.5 L10 3.5 L16 16.5"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <line
-          x1="7"
-          y1="12.5"
-          x2="13"
-          y2="12.5"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    </div>
-  )
-}
-
-// ── Minimal nav ───────────────────────────────────────────────────────────────
-
-function EarlyAccessNav() {
-  return (
-    <header className="fixed top-0 inset-x-0 z-50">
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <div className="flex items-center h-16 justify-between">
-
-          {/* Logo */}
-          <Link href="/early-access" className="flex items-center gap-2.5">
-            <LogoMark size={32} />
-            <span className="text-[15px] tracking-tight select-none">
-              <span className="font-bold text-white">Auto</span>
-              <span className="font-light text-blue-400/80">max</span>
-            </span>
-          </Link>
-
-          {/* Status badge — center on desktop, hidden on small mobile */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/8 px-3.5 py-1.5">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
-            </span>
-            <span className="text-[11px] font-semibold text-amber-300 tracking-wide">
-              In Development
-            </span>
-          </div>
-
-          {/* CTA */}
-          <Link
-            href="#waitlist"
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_10px_rgba(59,130,246,0.35)] hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_4px_18px_rgba(59,130,246,0.45)] transition-all duration-150"
-          >
-            Join Waitlist
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Hairline separator that fades in on scroll is faked via fixed bg */}
-      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
-    </header>
-  )
-}
 
 // ── Product mock ──────────────────────────────────────────────────────────────
 
@@ -117,10 +43,13 @@ function ProductMock() {
           <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
           <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
           <div className="ml-3 flex items-center gap-2">
-            <LogoMark size={20} />
-            <span className="text-[11px] font-semibold text-white/35 tracking-tight">
-              Automax · Dashboard
-            </span>
+            <div className="flex h-5 w-5 items-center justify-center rounded-[4px] bg-gradient-to-br from-blue-500 to-indigo-700">
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 16.5 L10 3.5 L16 16.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="7" y1="12.5" x2="13" y2="12.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <span className="text-[11px] font-semibold text-white/35 tracking-tight">Automax · Dashboard</span>
           </div>
         </div>
 
@@ -135,9 +64,7 @@ function ProductMock() {
               <div key={k.label} className="rounded-xl border border-white/[0.07] bg-[#0a1525] px-3 py-2.5">
                 <div className="text-[10px] text-white/30 mb-1">{k.label}</div>
                 <div className="text-[15px] font-bold text-white tabular-nums">{k.value}</div>
-                {k.trend && (
-                  <div className="text-[10px] text-emerald-400 mt-0.5 font-medium">{k.trend}</div>
-                )}
+                {k.trend && <div className="text-[10px] text-emerald-400 mt-0.5 font-medium">{k.trend}</div>}
               </div>
             ))}
           </div>
@@ -180,12 +107,8 @@ function ProductMock() {
         <div className="text-[12px] font-semibold text-white">Marcus T.</div>
         <div className="text-[11px] text-white/35 mt-0.5">House wash · $380 est.</div>
         <div className="mt-2 flex gap-1.5">
-          <div className="flex-1 rounded-md bg-blue-600/25 py-1 text-center text-[10px] font-semibold text-blue-300">
-            Reply
-          </div>
-          <div className="flex-1 rounded-md bg-white/[0.05] py-1 text-center text-[10px] font-medium text-white/40">
-            Ignore
-          </div>
+          <div className="flex-1 rounded-md bg-blue-600/25 py-1 text-center text-[10px] font-semibold text-blue-300">Reply</div>
+          <div className="flex-1 rounded-md bg-white/[0.05] py-1 text-center text-[10px] font-medium text-white/40">Ignore</div>
         </div>
       </div>
 
@@ -205,60 +128,51 @@ function ProductMock() {
   )
 }
 
-// ── Features ──────────────────────────────────────────────────────────────────
+// ── Feature cards ─────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
     icon: Users,
-    color: 'bg-blue-500/10 text-blue-400 ring-blue-500/20',
+    color: 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20',
     title: 'Capture every lead',
     desc: 'Every inbound request — form, call, text — lands in one inbox. AI responds instantly and moves them into your pipeline.',
   },
   {
     icon: Bot,
-    color: 'bg-indigo-500/10 text-indigo-400 ring-indigo-500/20',
+    color: 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20',
     title: 'Automate follow-up',
     desc: 'No lead goes cold. Automated sequences re-engage prospects at the right time without you lifting a finger.',
   },
   {
     icon: FileText,
-    color: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
+    color: 'bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20',
     title: 'Send quotes faster',
     desc: 'Professional, branded quotes in under 60 seconds. Collect deposits and track approvals automatically.',
   },
   {
     icon: Zap,
-    color: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+    color: 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20',
     title: 'Manage your pipeline',
     desc: 'See every lead, quote, and job at a glance. Know exactly where each deal stands without digging through texts.',
   },
   {
     icon: Star,
-    color: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+    color: 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20',
     title: 'Grow your reputation',
     desc: 'Automatically request Google reviews after every job. Watch your rating climb without asking manually.',
   },
   {
     icon: TrendingUp,
-    color: 'bg-teal-500/10 text-teal-400 ring-teal-500/20',
+    color: 'bg-teal-500/10 text-teal-400 ring-1 ring-teal-500/20',
     title: 'Run more on autopilot',
-    desc: 'Appointment reminders, scheduling, revenue forecasting — the admin handles itself so you stay focused on the work.',
+    desc: 'Reminders, scheduling, revenue forecasting — the admin handles itself so you stay focused on the work.',
   },
 ]
 
 const INDUSTRIES = [
-  'Pressure Washing',
-  'Landscaping',
-  'House Cleaning',
-  'Mobile Detailing',
-  'Pest Control',
-  'Pool Service',
-  'Window Cleaning',
-  'Junk Removal',
-  'HVAC',
-  'Painting',
-  'Roofing',
-  'Lawn Care',
+  'Pressure Washing', 'Landscaping', 'House Cleaning', 'Mobile Detailing',
+  'Pest Control', 'Pool Service', 'Window Cleaning', 'Junk Removal',
+  'HVAC', 'Painting', 'Roofing', 'Lawn Care',
 ]
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -267,19 +181,15 @@ export default function EarlyAccessPage() {
   return (
     <MarketingShell>
       <div className="bg-[#080f1e] min-h-screen">
-        <EarlyAccessNav />
+        <PublicNav />
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
         <section className="relative overflow-hidden pt-16">
-          {/* Background effects */}
           <div className="pointer-events-none absolute -top-40 -left-40 h-[700px] w-[700px] rounded-full bg-blue-700/18 blur-[140px]" />
           <div className="pointer-events-none absolute top-1/2 right-0 h-[500px] w-[500px] rounded-full bg-indigo-700/12 blur-[120px]" />
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.035]"
-            style={{
-              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-              backgroundSize: '28px 28px',
-            }}
+            style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }}
           />
           <div className="pointer-events-none absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
 
@@ -288,8 +198,7 @@ export default function EarlyAccessPage() {
 
               {/* Left — copy */}
               <div>
-                {/* Status pill */}
-                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/8 px-3.5 py-1.5">
+                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/[0.08] px-3.5 py-1.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
                   <span className="text-[12px] font-semibold text-blue-300 tracking-wide">
                     AI-Powered · Built for Service Businesses
@@ -310,20 +219,16 @@ export default function EarlyAccessPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-3 mb-10">
-                  <Link href="#waitlist" className={BLUE_BTN}>
+                  <Link href="/waitlist" className={BLUE_BTN}>
                     Join the Waitlist <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <Link href="#features" className={GHOST_BTN}>
+                  <Link href="/features" className={GHOST_BTN}>
                     See What&apos;s Coming
                   </Link>
                 </div>
 
                 <div className="flex flex-wrap gap-x-6 gap-y-2">
-                  {[
-                    'Early access pricing',
-                    'No commitment required',
-                    'Be first in line',
-                  ].map(f => (
+                  {['Early access pricing', 'No commitment required', 'Be first in line'].map(f => (
                     <div key={f} className="flex items-center gap-2 text-[13px] text-white/35">
                       <Check className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
                       {f}
@@ -339,21 +244,18 @@ export default function EarlyAccessPage() {
             </div>
           </div>
 
-          {/* Bottom fade */}
           <div className="h-20 bg-gradient-to-b from-transparent to-[#0a1120]" />
         </section>
 
-        {/* ── FEATURES ──────────────────────────────────────────────────── */}
-        <section id="features" className="relative bg-[#0a1120] py-20 sm:py-28 scroll-mt-16">
+        {/* ── FEATURES PREVIEW ──────────────────────────────────────────── */}
+        <section className="relative bg-[#0a1120] py-20 sm:py-28">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/6 to-transparent" />
 
           <div className="relative mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
             <div className="text-center mb-14">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/8 px-3.5 py-1.5 mb-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/[0.08] px-3.5 py-1.5 mb-5">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                <span className="text-[12px] font-semibold text-blue-300 tracking-wide">
-                  What Automax Will Do
-                </span>
+                <span className="text-[12px] font-semibold text-blue-300 tracking-wide">What Automax Will Do</span>
               </div>
               <h2 className="text-[30px] sm:text-[40px] font-bold tracking-tight text-white leading-tight">
                 Everything your business needs.<br className="hidden sm:block" />
@@ -375,7 +277,7 @@ export default function EarlyAccessPage() {
                     key={f.title}
                     className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 hover:border-blue-500/30 hover:bg-blue-500/[0.04] transition-all duration-200"
                   >
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${f.color} mb-5`}>
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${f.color} mb-5`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="text-[15px] font-bold text-white mb-2">{f.title}</h3>
@@ -383,6 +285,12 @@ export default function EarlyAccessPage() {
                   </div>
                 )
               })}
+            </div>
+
+            <div className="text-center mt-10">
+              <Link href="/features" className={GHOST_BTN}>
+                See the full platform overview <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </section>
@@ -392,59 +300,50 @@ export default function EarlyAccessPage() {
           <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[600px] rounded-full bg-blue-700/8 blur-[100px]" />
 
           <div className="relative mx-auto max-w-5xl px-5 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/8 px-3.5 py-1.5 mb-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/[0.08] px-3.5 py-1.5 mb-5">
               <div className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-              <span className="text-[12px] font-semibold text-blue-300 tracking-wide">
-                Built for Service Businesses
-              </span>
+              <span className="text-[12px] font-semibold text-blue-300 tracking-wide">Built for Service Businesses</span>
             </div>
 
             <h2 className="text-[30px] sm:text-[40px] font-bold tracking-tight text-white leading-tight mb-4">
               If you do the work, we&apos;ll handle the rest.
             </h2>
             <p className="text-[16px] text-white/40 leading-relaxed max-w-2xl mx-auto mb-12">
-              Automax is purpose-built for the businesses that keep things running —
-              field service pros who need their tools to work as hard as they do.
+              Automax is purpose-built for field service businesses — not a generic CRM
+              with service features bolted on. Built from the ground up for the way this
+              industry actually operates.
             </p>
 
-            <div className="flex flex-wrap gap-2.5 justify-center">
+            <div className="flex flex-wrap gap-2.5 justify-center mb-4">
               {INDUSTRIES.map(industry => (
                 <div
                   key={industry}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[13px] font-medium text-white/55 hover:border-blue-500/30 hover:text-white/80 hover:bg-blue-500/[0.06] transition-all duration-150"
+                  className="rounded-full border border-white/[0.08] bg-white/[0.035] px-4 py-2 text-[13px] font-medium text-white/50 hover:border-blue-500/25 hover:text-white/70 hover:bg-blue-500/[0.05] transition-all duration-150"
                 >
                   {industry}
                 </div>
               ))}
             </div>
-
-            <p className="mt-6 text-[12px] text-white/25">
-              And many more — if you run a service business, Automax is built for you.
-            </p>
+            <p className="text-[12px] text-white/20">And many more.</p>
           </div>
         </section>
 
-        {/* ── FINAL CTA / WAITLIST ──────────────────────────────────────── */}
-        <section id="waitlist" className="relative bg-[#0a1120] overflow-hidden py-24 sm:py-32 scroll-mt-16">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/10 to-transparent" />
-          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-blue-600/12 blur-[100px]" />
+        {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
+        <section className="relative bg-[#0a1120] overflow-hidden py-24 sm:py-32">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/8 to-transparent" />
+          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[700px] rounded-full bg-blue-600/10 blur-[100px]" />
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.025]"
-            style={{
-              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-              backgroundSize: '28px 28px',
-            }}
+            style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }}
           />
 
           <div className="relative mx-auto max-w-3xl px-5 sm:px-6 text-center">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/8 px-3.5 py-1.5 mb-7">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/[0.08] px-3.5 py-1.5 mb-7">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-70" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
               </span>
-              <span className="text-[11px] font-semibold text-amber-300 tracking-wide">
-                Currently in Development
-              </span>
+              <span className="text-[11px] font-semibold text-amber-300 tracking-wide">Currently in Development</span>
             </div>
 
             <h2 className="text-[36px] sm:text-[50px] font-bold text-white tracking-tight leading-[1.08] mb-5">
@@ -455,26 +354,17 @@ export default function EarlyAccessPage() {
             </h2>
 
             <p className="text-[17px] text-white/45 mb-10 max-w-xl mx-auto leading-relaxed">
-              We&apos;re in active development and onboarding a small number of early
-              access partners. Join the waitlist to get updates, early access pricing,
-              and the chance to influence the product roadmap.
+              We&apos;re in active development and onboarding a small number of early access partners.
+              Join the waitlist to get updates, early access pricing, and the chance to influence the
+              product roadmap.
             </p>
 
-            {/* Waitlist CTA — replace href with your form or route when ready */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="#waitlist"
-                className={BLUE_BTN}
-                style={{ fontSize: '15px', padding: '14px 32px' }}
-              >
+              <Link href="/waitlist" className={BLUE_BTN} style={{ fontSize: '15px', padding: '14px 32px' }}>
                 Join the Waitlist <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                href="mailto:hello@tryautomax.com"
-                className={GHOST_BTN}
-                style={{ fontSize: '15px', padding: '14px 28px' }}
-              >
-                Contact Us
+              <Link href="/features" className={GHOST_BTN} style={{ fontSize: '15px', padding: '14px 28px' }}>
+                See What&apos;s Coming
               </Link>
             </div>
 
@@ -484,27 +374,7 @@ export default function EarlyAccessPage() {
           </div>
         </section>
 
-        {/* ── FOOTER ────────────────────────────────────────────────────── */}
-        <footer className="border-t border-white/[0.06] bg-[#080f1e] py-8">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <Link href="/early-access" className="flex items-center gap-2.5">
-                <LogoMark size={26} />
-                <span className="text-[14px] tracking-tight select-none">
-                  <span className="font-bold text-white">Auto</span>
-                  <span className="font-light text-blue-400/70">max</span>
-                </span>
-              </Link>
-              <p className="text-[12px] text-white/20 text-center">
-                &copy; {new Date().getFullYear()} Automax. All rights reserved.
-              </p>
-              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/6 px-3 py-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                <span className="text-[11px] font-medium text-amber-300/70">In Development</span>
-              </div>
-            </div>
-          </div>
-        </footer>
+        <PublicFooter />
       </div>
     </MarketingShell>
   )
