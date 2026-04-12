@@ -46,12 +46,6 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === '/features' ||
     request.nextUrl.pathname.startsWith('/waitlist') ||
     request.nextUrl.pathname === '/api/waitlist' ||
-    request.nextUrl.pathname === '/pricing' ||
-    request.nextUrl.pathname.startsWith('/platform') ||
-    request.nextUrl.pathname.startsWith('/growth') ||
-    request.nextUrl.pathname.startsWith('/automation') ||
-    request.nextUrl.pathname.startsWith('/industries') ||
-    request.nextUrl.pathname.startsWith('/resources') ||
     request.nextUrl.pathname.startsWith('/q/') ||
     request.nextUrl.pathname.startsWith('/api/q/')
   const isPublicRoute = isAuthRoute || isMarketingRoute
