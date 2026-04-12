@@ -56,6 +56,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/q/')
   const isPublicRoute = isAuthRoute || isMarketingRoute
 
+  // Redirect unauthenticated visitors at / to the public landing page
+  if (!user && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/early-access'
+    return NextResponse.redirect(url)
+  }
+
   if (!user && !isPublicRoute) {
     // No user and trying to access protected route - redirect to login
     const url = request.nextUrl.clone()
