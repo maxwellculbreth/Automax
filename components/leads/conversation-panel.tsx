@@ -11,7 +11,7 @@ import {
   formatRelativeTime,
   formatCurrency,
 } from "@/lib/data-service"
-import { useMessages, useCreateMessage, useUpdateLead } from "@/hooks/use-data"
+import { useMessages, useUpdateLead } from "@/hooks/use-data"
 import {
   Send,
   Phone,
@@ -53,8 +53,8 @@ export function ConversationPanel({
   const [showAISuggestion, setShowAISuggestion] = useState(true)
   const [copiedSuggestion, setCopiedSuggestion] = useState(false)
 
+  const [isSending, setIsSending] = useState(false)
   const { messages, isLoading: messagesLoading, mutate: mutateMessages } = useMessages(lead?.id ?? null)
-  const { createMessage, isSending } = useCreateMessage()
   const { updateLead } = useUpdateLead()
 
   if (!lead) {
@@ -99,22 +99,27 @@ export function ConversationPanel({
   }
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !lead) return
-    
-    await createMessage({
-      lead_id: lead.id,
-      company_id: lead.business_id,
-      content: message.trim(),
-      sender_type: "business",
-      channel: "sms",
-    })
-    
-    setMessage("")
-    mutateMessages()
-    
-    // Update lead status if new
-    if (lead.status === "new") {
-      await updateLead({ id: lead.id, updates: { status: "contacted" } })
+    if (!message.trim() || !lead || isSending) return
+
+    setIsSending(true)
+    try {
+      // POST to the SMS route — it writes to the messages table AND calls Twilio.
+      // Do NOT call createMessage() directly here; that path skips Twilio entirely.
+      await fetch("/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: lead.id, content: message.trim() }),
+      })
+
+      setMessage("")
+      mutateMessages()
+
+      // Update lead status if new
+      if (lead.status === "new") {
+        await updateLead({ id: lead.id, updates: { status: "contacted" } })
+      }
+    } finally {
+      setIsSending(false)
     }
   }
 
