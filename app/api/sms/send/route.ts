@@ -24,23 +24,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: userRow } = await supabase
-      .from("users")
-      .select("business_id, id")
-      .eq("auth_user_id", user.id)
+    // Resolve company_id via the profiles table (actual live schema).
+    // The old code queried a "users" table with auth_user_id — that table
+    // does not exist in the live database.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("user_id", user.id)
       .single()
 
-    if (!userRow) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (!profile?.company_id) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 })
     }
 
-    const { business_id, id: sender_id } = userRow
+    const company_id = profile.company_id
 
+    // Leads table uses company_id, not business_id
     const { data: lead } = await supabase
       .from("leads")
-      .select("phone, name")
+      .select("phone, customer_name")
       .eq("id", lead_id)
-      .eq("business_id", business_id)
+      .eq("company_id", company_id)
       .single()
 
     if (!lead) {
@@ -51,18 +55,19 @@ export async function POST(req: NextRequest) {
     const { sid, mock } = await sendSMS(supabase, {
       to: lead.phone,
       body: content,
-      businessId: business_id,
+      businessId: company_id,
     })
 
-    // Record in messages table
+    // Record in messages table. sender_id is nullable — we have no FK to a
+    // users table in the live schema, so we omit it.
     const { data: message, error: msgError } = await supabase
       .from("messages")
       .insert({
         lead_id,
-        company_id: business_id,
+        company_id,
         content,
         sender_type: "business",
-        sender_id,
+        sender_id: null,
         channel: "sms",
         is_read: true,
       })

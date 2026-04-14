@@ -28,10 +28,11 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import { useLeads } from "@/hooks/use-data"
 
-const navigation: { name: string; href: string; icon: React.ElementType; badge?: number; pro?: boolean; max?: boolean }[] = [
+const navigation: { name: string; href: string; icon: React.ElementType; pro?: boolean; max?: boolean }[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Lead Inbox", href: "/leads", icon: Inbox, badge: 2 },
+  { name: "Lead Inbox", href: "/leads", icon: Inbox },
   { name: "Pipeline", href: "/pipeline", icon: Kanban },
   { name: "Quotes", href: "/quotes", icon: FileText },
   { name: "Jobs", href: "/jobs", icon: CalendarCheck },
@@ -51,6 +52,11 @@ export function AppSidebar() {
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Count leads with status "new" — these are the ones needing a first response.
+  // SWR polls every 30 s (configured in useLeads) so the badge stays fresh.
+  const { leads } = useLeads()
+  const newLeadCount = leads.filter((l) => l.status === "new").length
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -151,9 +157,9 @@ export function AppSidebar() {
                     {!collapsed && (
                       <>
                         <span className="flex-1">{item.name}</span>
-                        {item.badge && (
+                        {item.href === "/leads" && newLeadCount > 0 && (
                           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-medium text-white">
-                            {item.badge}
+                            {newLeadCount}
                           </span>
                         )}
                         {item.pro && (

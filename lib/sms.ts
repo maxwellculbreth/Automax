@@ -2,16 +2,17 @@
 //
 // Thin SMS delivery abstraction.
 //
-// Behaviour:
-//   - If a Twilio integration row exists (type='twilio', enabled=true) with valid
-//     credentials, the message is sent for real via Twilio.
-//   - Otherwise, the message is mock-delivered: logged to console, returned with
-//     a fake SID. No error is thrown — the automation engine keeps running.
+// Credential resolution order (first match wins):
+//   1. integrations table row: type='twilio', enabled=true, company_id=<businessId>
+//   2. Environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+//   3. Mock delivery — logged to console, fake SID returned, no error thrown.
 //
-// To enable Twilio later:
-//   1. Insert an `integrations` row for the business with type='twilio', enabled=true
-//   2. Set config: { account_sid, auth_token, from_number }
-//   Nothing else needs to change.
+// To enable per-business Twilio via DB:
+//   INSERT INTO integrations (company_id, type, enabled, config) VALUES
+//     ('<uuid>', 'twilio', true, '{"account_sid":"AC…","auth_token":"…","from_number":"+1…"}');
+//
+// To enable global Twilio via env (simpler for single-tenant):
+//   Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env.local / Vercel.
 
 export type SMSResult = {
   sid: string   // Twilio SID, or "mock_<timestamp>" in mock mode
@@ -33,20 +34,32 @@ export async function sendSMS(
     businessId: string
   }
 ): Promise<SMSResult> {
-  // Look up Twilio credentials for this business
+  // 1. Look up per-business Twilio credentials from integrations table.
+  //    Live schema uses company_id (not business_id).
   const { data: integration } = await supabase
     .from("integrations")
     .select("config, enabled")
-    .eq("business_id", businessId)
+    .eq("company_id", businessId)
     .eq("type", "twilio")
     .eq("enabled", true)
     .single()
 
-  const config = integration?.config as {
+  const dbConfig = integration?.config as {
     account_sid?: string
     auth_token?: string
     from_number?: string
   } | null
+
+  // 2. Fall back to environment variables when no integrations row is present.
+  const config = (dbConfig?.account_sid && dbConfig?.auth_token && dbConfig?.from_number)
+    ? dbConfig
+    : (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
+      ? {
+          account_sid: process.env.TWILIO_ACCOUNT_SID,
+          auth_token:  process.env.TWILIO_AUTH_TOKEN,
+          from_number: process.env.TWILIO_PHONE_NUMBER,
+        }
+      : null
 
   if (config?.account_sid && config?.auth_token && config?.from_number) {
     // --- Real Twilio delivery ---

@@ -143,6 +143,8 @@ export default function ReviewsPage() {
   const [isSaving,   setIsSaving]   = useState(false)
   const [savedOnce,  setSavedOnce]  = useState(false)
   const [copied,     setCopied]     = useState(false)
+  // Track per-lead send state: "idle" | "sending" | "sent" | "error"
+  const [sendState, setSendState]   = useState<Record<string, "idle" | "sending" | "sent" | "error">>( {})
 
   // TODO: derive from company plan — const isPro = ["pro", "max"].includes(company?.plan ?? "")
   const isPro = true
@@ -189,6 +191,45 @@ export default function ReviewsPage() {
     navigator.clipboard.writeText(previewMessage)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Send a review request SMS to a specific lead.
+  // Builds the message from the current template, substituting the lead's name
+  // and the saved review link. Calls the now-fixed /api/sms/send endpoint.
+  const handleSendReviewRequest = async (lead: { id: string; name: string; phone: string }) => {
+    if (!settings.reviewLink.trim()) {
+      toast.error("Add your Google review link in settings before sending")
+      return
+    }
+
+    const message = settings.template
+      .replace(/\{\{customer_name\}\}/g, lead.name.split(" ")[0] || lead.name)
+      .replace(/\{\{review_link\}\}/g, settings.reviewLink.trim())
+
+    setSendState(prev => ({ ...prev, [lead.id]: "sending" }))
+
+    try {
+      const res = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: lead.id, content: message }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Send failed")
+      }
+
+      setSendState(prev => ({ ...prev, [lead.id]: "sent" }))
+      toast.success(
+        data.mock
+          ? `Review request queued for ${lead.name} (mock — Twilio not configured)`
+          : `Review request sent to ${lead.name}`
+      )
+    } catch (err) {
+      setSendState(prev => ({ ...prev, [lead.id]: "error" }))
+      toast.error(err instanceof Error ? err.message : "Failed to send review request")
+    }
   }
 
   const pendingCount = DEMO_REQUESTS.filter(r => r.status === "pending" || r.status === "scheduled").length
@@ -574,7 +615,76 @@ export default function ReviewsPage() {
               </div>
             </div>
 
-            {/* D. Eligibility Rules */}
+            {/* D. Eligible Leads — real data, actionable send buttons */}
+            <div className="rounded-xl border border-border bg-card">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <h2 className="text-[13px] font-semibold text-foreground">Eligible for Review Request</h2>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">Completed leads with a phone number on file</p>
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground/50 bg-secondary/50 border border-border/60 rounded-full px-2 py-0.5">
+                  {eligibleLeads.length} lead{eligibleLeads.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {eligibleLeads.length === 0 ? (
+                <div className="px-5 py-8 text-center">
+                  <p className="text-[13px] text-muted-foreground">No completed leads with a phone number yet.</p>
+                  <p className="text-[12px] text-muted-foreground/60 mt-1">Mark a lead as Completed to see it here.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
+                  {eligibleLeads.map(lead => {
+                    const state = sendState[lead.id] ?? "idle"
+                    return (
+                      <div key={lead.id} className="flex items-center gap-3 px-5 py-3 hover:bg-secondary/20 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Phone className="h-2.5 w-2.5" />
+                            {lead.phone}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleSendReviewRequest({ id: lead.id, name: lead.name, phone: lead.phone })}
+                          disabled={state === "sending" || state === "sent" || !settings.reviewLink.trim()}
+                          title={!settings.reviewLink.trim() ? "Add a Google review link in settings first" : undefined}
+                          className={cn(
+                            "flex-shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all",
+                            state === "sent"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 cursor-default"
+                              : state === "error"
+                              ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                              : state === "sending"
+                              ? "bg-secondary/60 text-muted-foreground cursor-wait"
+                              : !settings.reviewLink.trim()
+                              ? "bg-secondary/40 text-muted-foreground/50 cursor-not-allowed"
+                              : "bg-blue-600/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600/20"
+                          )}
+                        >
+                          {state === "sending" && <Loader2 className="h-3 w-3 animate-spin" />}
+                          {state === "sent"    && <CheckCheck className="h-3 w-3" />}
+                          {state === "error"   && <AlertCircle className="h-3 w-3" />}
+                          {state === "idle"    && <Send className="h-3 w-3" />}
+                          {state === "sending" ? "Sending…" : state === "sent" ? "Sent" : state === "error" ? "Retry" : "Send"}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {!settings.reviewLink.trim() && eligibleLeads.length > 0 && (
+                <div className="px-5 py-3 border-t border-border/50">
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                    Add your Google review link above to enable sending
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* E. Eligibility Rules */}
             <div className="rounded-xl border border-border bg-card">
               <div className="px-5 py-4 border-b border-border">
                 <h2 className="text-[13px] font-semibold text-foreground">Eligibility Rules</h2>
@@ -630,15 +740,15 @@ export default function ReviewsPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-[13px] font-semibold text-foreground">Delivery Integration</p>
-                  <span className="text-[10px] font-medium text-muted-foreground bg-secondary/60 border border-border/60 rounded-full px-2 py-0.5">
-                    Ready for integration
+                  <p className="text-[13px] font-semibold text-foreground">SMS Delivery</p>
+                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
+                    Connected
                   </span>
                 </div>
                 <p className="text-[12px] text-muted-foreground leading-relaxed max-w-xl">
-                  Review request delivery will connect to SMS sending in a future update.
-                  All settings, automation rules, and eligibility logic are fully configured and ready now —
-                  delivery is the only remaining step.
+                  Review requests are sent via SMS using your Twilio integration. Use the &quot;Eligible for Review Request&quot;
+                  section above to send manually, or enable automation to send automatically after jobs are completed.
+                  If Twilio is not yet configured, messages are logged locally without being delivered.
                 </p>
               </div>
             </div>
@@ -648,9 +758,9 @@ export default function ReviewsPage() {
                 Settings ready
               </div>
               <div className="w-px h-4 bg-border" />
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/60">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                 <Send className="h-3.5 w-3.5" />
-                Delivery coming soon
+                Send active
               </div>
             </div>
           </div>
