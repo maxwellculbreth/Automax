@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === '/early-access' ||
     request.nextUrl.pathname === '/features' ||
     request.nextUrl.pathname.startsWith('/waitlist') ||
+    request.nextUrl.pathname.startsWith('/legal') ||
     request.nextUrl.pathname === '/api/waitlist' ||
     request.nextUrl.pathname.startsWith('/q/') ||
     request.nextUrl.pathname.startsWith('/api/q/')
