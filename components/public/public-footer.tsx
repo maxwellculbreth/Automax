@@ -31,6 +31,12 @@ export function PublicFooter() {
             <Link href="/waitlist" className="text-[12px] text-white/30 hover:text-white/65 transition-colors">
               Join Waitlist
             </Link>
+            <Link href="/legal/privacy" className="text-[12px] text-white/30 hover:text-white/65 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/legal/terms" className="text-[12px] text-white/30 hover:text-white/65 transition-colors">
+              Terms
+            </Link>
           </nav>
 
           <p className="text-[11px] text-white/20">
