@@ -80,7 +80,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, mock, message, twilio_sid: sid })
   } catch (err) {
-    console.error("Unexpected error in /api/sms/send:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error("Unexpected error in /api/sms/send:", message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

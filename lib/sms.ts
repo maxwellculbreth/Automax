@@ -14,6 +14,15 @@
 // To enable global Twilio via env (simpler for single-tenant):
 //   Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env.local / Vercel.
 
+// Normalise any US phone string to E.164 (+1XXXXXXXXXX).
+// Twilio rejects (555) 123-4567, 555-123-4567, 5551234567, etc.
+function toE164Format(phone: string): string {
+  const digits = phone.replace(/\D/g, "")
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`
+  return phone // already E.164 or unknown format — pass through
+}
+
 export type SMSResult = {
   sid: string   // Twilio SID, or "mock_<timestamp>" in mock mode
   mock: boolean // true when no Twilio credentials were found
@@ -62,6 +71,9 @@ export async function sendSMS(
       : null
 
   if (config?.account_sid && config?.auth_token && config?.from_number) {
+    // Normalise to E.164 (+1XXXXXXXXXX). Twilio rejects anything else.
+    const toE164 = toE164Format(to)
+
     // --- Real Twilio delivery ---
     const url = `https://api.twilio.com/2010-04-01/Accounts/${config.account_sid}/Messages.json`
     const res = await fetch(url, {
@@ -73,14 +85,17 @@ export async function sendSMS(
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        To: to,
+        To: toE164,
         From: config.from_number,
         Body: body,
       }),
     })
 
     const data = await res.json()
-    if (!res.ok) throw new Error(data.message ?? "Twilio error")
+    if (!res.ok) {
+      // Surface the real Twilio error so it propagates up and gets logged
+      throw new Error(`Twilio ${res.status}: ${data.message ?? JSON.stringify(data)}`)
+    }
     return { sid: data.sid, mock: false }
   }
 
