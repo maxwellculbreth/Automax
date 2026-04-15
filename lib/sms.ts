@@ -1,18 +1,23 @@
 // lib/sms.ts
 //
-// Thin SMS delivery abstraction.
+// SMS delivery abstraction. Send priority (first match wins):
 //
-// Credential resolution order (first match wins):
-//   1. integrations table row: type='twilio', enabled=true, company_id=<businessId>
-//   2. Environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
-//   3. Mock delivery — logged to console, fake SID returned, no error thrown.
+//   1. DB integrations row (company_id, type='twilio', enabled=true):
+//      a. if config.messaging_service_sid → send via MessagingServiceSid (A2P 10DLC compliant)
+//      b. else if config.from_number      → send via From number (legacy / pre-A2P)
+//   2. Env vars (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN):
+//      a. if TWILIO_MESSAGING_SERVICE_SID → send via MessagingServiceSid
+//      b. else if TWILIO_PHONE_NUMBER     → send via From number
+//   3. Mock — logs to console, returns fake SID, no error thrown.
 //
-// To enable per-business Twilio via DB:
-//   INSERT INTO integrations (company_id, type, enabled, config) VALUES
-//     ('<uuid>', 'twilio', true, '{"account_sid":"AC…","auth_token":"…","from_number":"+1…"}');
-//
-// To enable global Twilio via env (simpler for single-tenant):
-//   Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env.local / Vercel.
+// Supported integrations.config shape:
+//   {
+//     "account_sid":            "AC…",   // required for real delivery
+//     "auth_token":             "…",     // required for real delivery
+//     "messaging_service_sid":  "MG…",   // preferred — use after A2P campaign approved
+//     "from_number":            "+1…",   // fallback if no messaging_service_sid
+//     "compliance_status":      "pending" | "approved" | "failed" | "mock"
+//   }
 
 // Normalise any US phone string to E.164 (+1XXXXXXXXXX).
 // Twilio rejects (555) 123-4567, 555-123-4567, 5551234567, etc.
@@ -24,8 +29,43 @@ function toE164Format(phone: string): string {
 }
 
 export type SMSResult = {
-  sid: string   // Twilio SID, or "mock_<timestamp>" in mock mode
-  mock: boolean // true when no Twilio credentials were found
+  sid: string   // Twilio message SID, or "mock_<timestamp>" in mock mode
+  mock: boolean // true when no Twilio credentials were resolved
+}
+
+type TwilioConfig = {
+  account_sid:           string
+  auth_token:            string
+  messaging_service_sid?: string  // preferred: A2P 10DLC MessagingService
+  from_number?:          string   // fallback: direct From number
+}
+
+// Resolve credentials from DB config or env vars.
+// Returns null if neither is sufficiently configured → mock mode.
+function resolveConfig(dbConfig: Partial<TwilioConfig> | null): TwilioConfig | null {
+  // DB config takes priority
+  if (dbConfig?.account_sid && dbConfig?.auth_token) {
+    if (dbConfig.messaging_service_sid || dbConfig.from_number) {
+      return dbConfig as TwilioConfig
+    }
+  }
+
+  // Env var fallback
+  const sid   = process.env.TWILIO_ACCOUNT_SID
+  const token = process.env.TWILIO_AUTH_TOKEN
+  const mgSid = process.env.TWILIO_MESSAGING_SERVICE_SID
+  const from  = process.env.TWILIO_PHONE_NUMBER
+
+  if (sid && token && (mgSid || from)) {
+    return {
+      account_sid:           sid,
+      auth_token:            token,
+      messaging_service_sid: mgSid,
+      from_number:           from,
+    }
+  }
+
+  return null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,8 +83,7 @@ export async function sendSMS(
     businessId: string
   }
 ): Promise<SMSResult> {
-  // 1. Look up per-business Twilio credentials from integrations table.
-  //    Live schema uses company_id (not business_id).
+  // 1. Look up per-business Twilio config from integrations table.
   const { data: integration } = await supabase
     .from("integrations")
     .select("config, enabled")
@@ -53,53 +92,36 @@ export async function sendSMS(
     .eq("enabled", true)
     .single()
 
-  const dbConfig = integration?.config as {
-    account_sid?: string
-    auth_token?: string
-    from_number?: string
-  } | null
+  const config = resolveConfig(integration?.config ?? null)
 
-  // 2. Fall back to environment variables when no integrations row is present.
-  const config = (dbConfig?.account_sid && dbConfig?.auth_token && dbConfig?.from_number)
-    ? dbConfig
-    : (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
-      ? {
-          account_sid: process.env.TWILIO_ACCOUNT_SID,
-          auth_token:  process.env.TWILIO_AUTH_TOKEN,
-          from_number: process.env.TWILIO_PHONE_NUMBER,
-        }
-      : null
-
-  if (config?.account_sid && config?.auth_token && config?.from_number) {
-    // Normalise to E.164 (+1XXXXXXXXXX). Twilio rejects anything else.
-    const toE164 = toE164Format(to)
-
-    // --- Real Twilio delivery ---
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${config.account_sid}/Messages.json`
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization:
-          "Basic " +
-          Buffer.from(`${config.account_sid}:${config.auth_token}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        To: toE164,
-        From: config.from_number,
-        Body: body,
-      }),
-    })
-
-    const data = await res.json()
-    if (!res.ok) {
-      // Surface the real Twilio error so it propagates up and gets logged
-      throw new Error(`Twilio ${res.status}: ${data.message ?? JSON.stringify(data)}`)
-    }
-    return { sid: data.sid, mock: false }
+  if (!config) {
+    // No credentials found — intentional mock mode
+    console.log(`[SMS mock] to=${to} businessId=${businessId} body="${body}"`)
+    return { sid: `mock_${Date.now()}`, mock: true }
   }
 
-  // --- Mock delivery ---
-  console.log(`[SMS mock] to=${to} businessId=${businessId} body="${body}"`)
-  return { sid: `mock_${Date.now()}`, mock: true }
+  // 2. Resolve sender: MessagingServiceSid > From number
+  const toE164 = toE164Format(to)
+  const sender: Record<string, string> = config.messaging_service_sid
+    ? { MessagingServiceSid: config.messaging_service_sid }
+    : { From: config.from_number! }
+
+  // 3. Send via Twilio REST API
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${config.account_sid}/Messages.json`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization:
+        "Basic " +
+        Buffer.from(`${config.account_sid}:${config.auth_token}`).toString("base64"),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ To: toE164, Body: body, ...sender }),
+  })
+
+  const data = await res.json()
+  if (!res.ok) {
+    throw new Error(`Twilio ${res.status}: ${data.message ?? JSON.stringify(data)}`)
+  }
+  return { sid: data.sid, mock: false }
 }
